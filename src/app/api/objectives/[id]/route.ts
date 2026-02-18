@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getCurrentUser, unauthorized, notFound } from "@/lib/auth-utils";
+import { accessLogService } from "@/lib/services/access-log.service";
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  const objective = await prisma.objective.findUnique({
+    where: { id: params.id },
+    include: {
+      owner: { select: { id: true, name: true, position: true } },
+      keyResults: {
+        include: { checkIns: { orderBy: { createdAt: "desc" }, take: 5 } },
+        orderBy: { createdAt: "asc" },
+      },
+      parent: { select: { id: true, title: true } },
+      children: { select: { id: true, title: true, progress: true, status: true } },
+    },
+  });
+
+  if (!objective) return notFound("목표를 찾을 수 없습니다.");
+
+  if (objective.ownerId !== user.id) {
+    await accessLogService.log({
+      viewerId: user.id,
+      targetId: objective.ownerId,
+      resourceType: "OKR",
+      resourceId: params.id,
+    });
+  }
+
+  return NextResponse.json(objective);
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  const data = await req.json();
+  const objective = await prisma.objective.update({
+    where: { id: params.id },
+    data: {
+      ...(data.title && { title: data.title }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.status && { status: data.status }),
+      ...(data.progress !== undefined && { progress: data.progress }),
+    },
+  });
+
+  return NextResponse.json(objective);
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  await prisma.objective.delete({ where: { id: params.id } });
+  return NextResponse.json({ message: "삭제되었습니다." });
+}
