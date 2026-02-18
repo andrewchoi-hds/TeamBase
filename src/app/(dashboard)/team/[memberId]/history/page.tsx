@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, use } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -12,8 +12,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { History, Eye } from "lucide-react";
 import { format } from "date-fns";
 
-export default function MemberHistoryPage({ params }: { params: Promise<{ memberId: string }> }) {
-  const { memberId } = use(params);
+export default function MemberHistoryPage({ params }: { params: { memberId: string } }) {
+  const { memberId } = params;
   const accessLogged = useRef(false);
 
   const { data: reviews, isLoading } = useQuery({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -26,8 +26,8 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cycleId: string }> }) {
-  const { cycleId } = use(params);
+export default function ReviewCycleDetailPage({ params }: { params: { cycleId: string } }) {
+  const { cycleId } = params;
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);

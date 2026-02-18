@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -16,8 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Loader2 } from "lucide-react";
 
-export default function ObjectiveDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ObjectiveDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const queryClient = useQueryClient();
   const [krOpen, setKrOpen] = useState(false);
   const [krTitle, setKrTitle] = useState("");

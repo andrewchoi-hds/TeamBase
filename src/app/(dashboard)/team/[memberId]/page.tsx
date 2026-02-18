@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -18,8 +17,8 @@ import { format } from "date-fns";
 const roleLabels: Record<string, string> = { ADMIN: "관리자", MANAGER: "팀장", MEMBER: "팀원" };
 const categoryLabels: Record<string, string> = { STRENGTH: "강점", IMPROVEMENT: "개선점", GENERAL: "일반" };
 
-export default function TeamMemberPage({ params }: { params: Promise<{ memberId: string }> }) {
-  const { memberId } = use(params);
+export default function TeamMemberPage({ params }: { params: { memberId: string } }) {
+  const { memberId } = params;
   const { data: member, isLoading } = useQuery({
     queryKey: ["user", memberId],
     queryFn: () => api.get<any>(`/users/${memberId}`),

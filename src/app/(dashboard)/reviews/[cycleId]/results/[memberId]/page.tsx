@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -16,8 +15,8 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function MemberReviewResultPage({ params }: { params: Promise<{ cycleId: string; memberId: string }> }) {
-  const { cycleId, memberId } = use(params);
+export default function MemberReviewResultPage({ params }: { params: { cycleId: string; memberId: string } }) {
+  const { cycleId, memberId } = params;
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["review-results", cycleId, memberId],
     queryFn: () => api.get<any[]>(`/reviews?type=received&cycleId=${cycleId}`),

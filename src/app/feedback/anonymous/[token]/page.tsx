@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,8 +19,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function AnonymousFeedbackPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = use(params);
+export default function AnonymousFeedbackPage({ params }: { params: { token: string } }) {
+  const { token } = params;
   const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "submitted">("loading");
   const [targetName, setTargetName] = useState("");
   const [errorMsg, setErrorMsg] = useState("");

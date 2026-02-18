@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -37,8 +37,8 @@ function RatingScale({ value, onChange }: { value: number; onChange: (v: number)
   );
 }
 
-export default function WriteReviewPage({ params }: { params: Promise<{ cycleId: string; targetId: string }> }) {
-  const { cycleId, targetId } = use(params);
+export default function WriteReviewPage({ params }: { params: { cycleId: string; targetId: string } }) {
+  const { cycleId, targetId } = params;
   const router = useRouter();
   const { saveDraft, getDraft, removeDraft } = useReviewStore();
 

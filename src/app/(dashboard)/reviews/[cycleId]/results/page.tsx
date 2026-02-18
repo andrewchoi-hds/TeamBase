@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -11,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ChevronRight } from "lucide-react";
 
-export default function ReviewResultsPage({ params }: { params: Promise<{ cycleId: string }> }) {
-  const { cycleId } = use(params);
+export default function ReviewResultsPage({ params }: { params: { cycleId: string } }) {
+  const { cycleId } = params;
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
     queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),

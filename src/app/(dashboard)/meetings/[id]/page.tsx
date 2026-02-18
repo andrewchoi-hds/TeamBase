@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -18,8 +18,8 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Plus, Send, Calendar, Clock, Loader2 } from "lucide-react";
 
-export default function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function MeetingDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [noteContent, setNoteContent] = useState("");
