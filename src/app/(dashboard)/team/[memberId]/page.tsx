@@ -122,7 +122,7 @@ export default function TeamMemberPage({ params }: { params: { memberId: string 
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-medium">{fb.author?.name}</span>
                         <Badge variant="outline" className="text-xs">{categoryLabels[fb.category] ?? fb.category}</Badge>
-                        <span className="text-xs text-muted-foreground">{format(new Date(fb.createdAt), "M/d")}</span>
+                        <span className="text-xs text-muted-foreground">{format(new Date(fb.createdAt), "yyyy/M/d")}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">{fb.content}</p>
                     </div>

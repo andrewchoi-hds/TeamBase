@@ -63,8 +63,8 @@ export default function ReviewsPage() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      {format(new Date(cycle.startDate), "M/d", { locale: ko })} ~{" "}
-                      {format(new Date(cycle.endDate), "M/d", { locale: ko })}
+                      {format(new Date(cycle.startDate), "yyyy/M/d", { locale: ko })} ~{" "}
+                      {format(new Date(cycle.endDate), "yyyy/M/d", { locale: ko })}
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />

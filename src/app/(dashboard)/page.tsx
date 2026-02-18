@@ -142,7 +142,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {m.scheduledAt ? format(new Date(m.scheduledAt), "M/d") : ""}
+                        {m.scheduledAt ? format(new Date(m.scheduledAt), "yyyy/M/d") : ""}
                       </Badge>
                     </div>
                   </Link>

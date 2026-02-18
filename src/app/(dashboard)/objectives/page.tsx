@@ -52,7 +52,7 @@ export default function ObjectivesPage() {
                     <div className="text-right">
                       <p className="text-2xl font-bold">{Math.round(obj.progress)}%</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(obj.startDate), "M/d")} ~ {format(new Date(obj.endDate), "M/d")}
+                        {format(new Date(obj.startDate), "yyyy/M/d")} ~ {format(new Date(obj.endDate), "yyyy/M/d")}
                       </p>
                     </div>
                   </div>

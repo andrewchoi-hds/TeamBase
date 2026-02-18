@@ -11,7 +11,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MessageSquare, Plus, ShieldCheck, Lock } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MessageSquare, Plus, ShieldCheck, Lock, Send, ChevronDown, LinkIcon } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 
@@ -41,19 +47,50 @@ export default function FeedbackPage() {
     enabled: !!session?.user?.id,
   });
 
+  const { data: sent, isLoading: loadingSent } = useQuery({
+    queryKey: ["feedback", "sent"],
+    queryFn: () => api.get<any[]>("/feedback/identified?type=given"),
+  });
+
   return (
     <div>
       <PageHeader title="피드백" description="받은 피드백을 확인하세요.">
-        <Button asChild>
-          <Link href="/feedback/give"><Plus className="mr-2 h-4 w-4" />피드백 작성</Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              피드백 작성
+              <ChevronDown className="ml-2 h-3.5 w-3.5 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/feedback/give" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <div>
+                  <p className="font-medium">기명 피드백</p>
+                  <p className="text-xs text-muted-foreground">이름을 밝히고 피드백을 보냅니다</p>
+                </div>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/feedback/request" className="flex items-center gap-2">
+                <LinkIcon className="h-4 w-4" />
+                <div>
+                  <p className="font-medium">무기명 피드백 요청</p>
+                  <p className="text-xs text-muted-foreground">익명 링크를 생성하여 공유합니다</p>
+                </div>
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       <Tabs defaultValue="received">
         <TabsList>
           <TabsTrigger value="received">기명 피드백</TabsTrigger>
           <TabsTrigger value="anonymous">무기명 피드백</TabsTrigger>
-          <TabsTrigger value="sent"><Link href="/feedback/sent">보낸 피드백</Link></TabsTrigger>
+          <TabsTrigger value="sent">보낸 피드백</TabsTrigger>
         </TabsList>
 
         {/* 기명 피드백 */}
@@ -91,6 +128,28 @@ export default function FeedbackPage() {
             </AlertDescription>
           </Alert>
 
+          {/* 무기명 피드백 요청 안내 */}
+          <Card className="mb-4 border-dashed">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted">
+                    <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">무기명 피드백은 어떻게 받나요?</p>
+                    <p className="text-xs text-muted-foreground">
+                      익명 링크를 생성하고 동료에게 공유하면, 링크를 통해 익명으로 피드백을 받을 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/feedback/request">링크 생성</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {loadingAnonymous ? <LoadingState /> : !anonymous?.isVisible ? (
             <EmptyState
               icon={<Lock className="h-12 w-12" />}
@@ -105,6 +164,33 @@ export default function FeedbackPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs">익명</Badge>
+                        <Badge variant="secondary" className={`text-xs border-0 ${categoryColors[fb.category]}`}>
+                          {categoryLabels[fb.category]}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{format(new Date(fb.createdAt), "yyyy.M.d")}</span>
+                    </div>
+                    <p className="text-sm">{fb.content}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* 보낸 피드백 */}
+        <TabsContent value="sent" className="mt-4">
+          {loadingSent ? <LoadingState /> : !sent?.length ? (
+            <EmptyState icon={<Send className="h-12 w-12" />} title="보낸 피드백이 없습니다" />
+          ) : (
+            <div className="space-y-3">
+              {sent.map((fb: any) => (
+                <Card key={fb.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">To:</span>
+                        <span className="font-medium text-sm">{fb.target.name}</span>
                         <Badge variant="secondary" className={`text-xs border-0 ${categoryColors[fb.category]}`}>
                           {categoryLabels[fb.category]}
                         </Badge>
