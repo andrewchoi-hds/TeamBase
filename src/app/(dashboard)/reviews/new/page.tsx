@@ -13,13 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
@@ -101,7 +94,7 @@ export default function NewReviewCyclePage() {
     }
   };
 
-  const maybeAutoName = (start: Date, end: Date) => {
+  const maybeAutoName = (start: Date, _end: Date) => {
     if (nameValue && !nameValue.match(/^\d{4}년.*평가$/)) return;
     const label = getQuarterLabel(start);
     setValue("name", `${label} 평가`);

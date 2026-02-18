@@ -7,9 +7,8 @@ import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 
-const levelLabels: Record<string, string> = { COMPANY: "전사", TEAM: "팀", INDIVIDUAL: "개인" };
+
 
 export default function TeamObjectivesPage() {
   const { data: objectives, isLoading } = useQuery({

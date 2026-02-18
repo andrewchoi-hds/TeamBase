@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Target, Calendar, FileText } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
