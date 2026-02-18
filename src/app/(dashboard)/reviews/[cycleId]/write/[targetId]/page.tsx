@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -37,17 +37,18 @@ function RatingScale({ value, onChange }: { value: number; onChange: (v: number)
   );
 }
 
-export default function WriteReviewPage({ params }: { params: { cycleId: string; targetId: string } }) {
+export default function WriteReviewPage({ params }: { params: Promise<{ cycleId: string; targetId: string }> }) {
+  const { cycleId, targetId } = use(params);
   const router = useRouter();
   const { saveDraft, getDraft, removeDraft } = useReviewStore();
 
   const { data: cycle, isLoading } = useQuery({
-    queryKey: ["review-cycle", params.cycleId],
-    queryFn: () => api.get<any>(`/review-cycles/${params.cycleId}`),
+    queryKey: ["review-cycle", cycleId],
+    queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
   });
 
   const assignment = cycle?.assignments?.find(
-    (a: any) => a.target.id === params.targetId
+    (a: any) => a.target.id === targetId
   );
 
   const [responses, setResponses] = useState<Record<string, { rating: number; comment: string }>>({});
@@ -87,8 +88,8 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assignmentId: assignment.id,
-          cycleId: params.cycleId,
-          targetId: params.targetId,
+          cycleId: cycleId,
+          targetId: targetId,
           overallComment,
           responses: responseArray,
         }),
@@ -116,7 +117,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     onSuccess: () => {
       if (assignment) removeDraft(assignment.id);
       toast.success("평가가 제출되었습니다.");
-      router.push(`/reviews/${params.cycleId}`);
+      router.push(`/reviews/${cycleId}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });

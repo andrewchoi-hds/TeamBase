@@ -7,6 +7,10 @@ type RouteHandler = (req: NextRequest, context: any) => Promise<NextResponse>;
 export function withErrorHandler(handler: RouteHandler): RouteHandler {
   return async (req, context) => {
     try {
+      // Next.js 14.2+: params가 Promise일 수 있으므로 미리 resolve
+      if (context?.params && typeof context.params.then === "function") {
+        context = { ...context, params: await context.params };
+      }
       return await handler(req, context);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));

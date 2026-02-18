@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -17,35 +18,36 @@ import { format } from "date-fns";
 const roleLabels: Record<string, string> = { ADMIN: "관리자", MANAGER: "팀장", MEMBER: "팀원" };
 const categoryLabels: Record<string, string> = { STRENGTH: "강점", IMPROVEMENT: "개선점", GENERAL: "일반" };
 
-export default function TeamMemberPage({ params }: { params: { memberId: string } }) {
+export default function TeamMemberPage({ params }: { params: Promise<{ memberId: string }> }) {
+  const { memberId } = use(params);
   const { data: member, isLoading } = useQuery({
-    queryKey: ["user", params.memberId],
-    queryFn: () => api.get<any>(`/users/${params.memberId}`),
+    queryKey: ["user", memberId],
+    queryFn: () => api.get<any>(`/users/${memberId}`),
   });
 
   const { data: objectives } = useQuery({
-    queryKey: ["objectives", params.memberId],
-    queryFn: () => api.get<any[]>(`/objectives?ownerId=${params.memberId}`),
-    enabled: !!params.memberId,
+    queryKey: ["objectives", memberId],
+    queryFn: () => api.get<any[]>(`/objectives?ownerId=${memberId}`),
+    enabled: !!memberId,
   });
 
   const { data: feedbacks } = useQuery({
-    queryKey: ["feedback-received", params.memberId],
+    queryKey: ["feedback-received", memberId],
     queryFn: () => api.get<any[]>(`/feedback/identified?type=received`),
-    enabled: !!params.memberId,
+    enabled: !!memberId,
   });
 
   if (isLoading) return <LoadingState rows={5} />;
   if (!member) return null;
 
   const memberObjectives = objectives ?? [];
-  const recentFeedback = (feedbacks ?? []).filter((fb: any) => fb.target?.id === params.memberId).slice(0, 5);
+  const recentFeedback = (feedbacks ?? []).filter((fb: any) => fb.target?.id === memberId).slice(0, 5);
 
   return (
     <div>
       <PageHeader title={member.name} description="팀원 프로필">
         <Button asChild variant="outline">
-          <Link href={`/team/${params.memberId}/history`}>
+          <Link href={`/team/${memberId}/history`}>
             <History className="mr-2 h-4 w-4" />
             평정 이력
           </Link>

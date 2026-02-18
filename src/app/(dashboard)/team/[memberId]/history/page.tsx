@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -12,17 +12,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { History, Eye } from "lucide-react";
 import { format } from "date-fns";
 
-export default function MemberHistoryPage({ params }: { params: { memberId: string } }) {
+export default function MemberHistoryPage({ params }: { params: Promise<{ memberId: string }> }) {
+  const { memberId } = use(params);
   const accessLogged = useRef(false);
 
   const { data: reviews, isLoading } = useQuery({
-    queryKey: ["member-reviews", params.memberId],
-    queryFn: () => api.get<any[]>(`/reviews?type=received&targetId=${params.memberId}`),
+    queryKey: ["member-reviews", memberId],
+    queryFn: () => api.get<any[]>(`/reviews?type=received&targetId=${memberId}`),
   });
 
   const { data: user } = useQuery({
-    queryKey: ["user", params.memberId],
-    queryFn: () => api.get<any>(`/users/${params.memberId}`),
+    queryKey: ["user", memberId],
+    queryFn: () => api.get<any>(`/users/${memberId}`),
   });
 
   // Log access when page loads (once)
@@ -30,11 +31,11 @@ export default function MemberHistoryPage({ params }: { params: { memberId: stri
     if (!accessLogged.current) {
       accessLogged.current = true;
       api.post("/access-logs", {
-        targetId: params.memberId,
+        targetId: memberId,
         resourceType: "REVIEW",
       }).catch(() => {/* silent */});
     }
-  }, [params.memberId]);
+  }, [memberId]);
 
   return (
     <div>

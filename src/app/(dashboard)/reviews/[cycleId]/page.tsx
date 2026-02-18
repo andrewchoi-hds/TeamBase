@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -26,7 +26,8 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function ReviewCycleDetailPage({ params }: { params: { cycleId: string } }) {
+export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cycleId: string }> }) {
+  const { cycleId } = use(params);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -35,8 +36,8 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
   const [newReviewType, setNewReviewType] = useState("PEER");
 
   const { data: cycle, isLoading } = useQuery({
-    queryKey: ["review-cycle", params.cycleId],
-    queryFn: () => api.get<any>(`/review-cycles/${params.cycleId}`),
+    queryKey: ["review-cycle", cycleId],
+    queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
   });
 
   const { data: users } = useQuery({
@@ -46,20 +47,20 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
   });
 
   const activateMutation = useMutation({
-    mutationFn: () => api.patch(`/review-cycles/${params.cycleId}`, { status: "ACTIVE" }),
+    mutationFn: () => api.patch(`/review-cycles/${cycleId}`, { status: "ACTIVE" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
       toast.success("평가 주기가 시작되었습니다.");
     },
   });
 
   const addAssignmentMutation = useMutation({
     mutationFn: () =>
-      api.post(`/review-cycles/${params.cycleId}/assignments`, {
+      api.post(`/review-cycles/${cycleId}/assignments`, {
         assignments: [{ reviewerId: newReviewerId, targetId: newTargetId, reviewType: newReviewType }],
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
       toast.success("평가 배정이 추가되었습니다.");
       setShowAddForm(false);
       setNewReviewerId("");
@@ -71,9 +72,9 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
 
   const deleteAssignmentMutation = useMutation({
     mutationFn: (assignmentId: string) =>
-      api.delete(`/review-cycles/${params.cycleId}/assignments/${assignmentId}`),
+      api.delete(`/review-cycles/${cycleId}/assignments/${assignmentId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
       toast.success("배정이 삭제되었습니다.");
     },
     onError: () => toast.error("배정 삭제에 실패했습니다."),
@@ -100,7 +101,7 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
           )}
           {cycle.status === "ACTIVE" && (
             <Button asChild variant="outline">
-              <Link href={`/reviews/${params.cycleId}/results`}>
+              <Link href={`/reviews/${cycleId}/results`}>
                 <BarChart3 className="mr-2 h-4 w-4" />
                 결과 보기
               </Link>
@@ -144,7 +145,7 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
                   </div>
                   {assignment.status !== "SUBMITTED" && cycle.status === "ACTIVE" && (
                     <Button size="sm" asChild>
-                      <Link href={`/reviews/${params.cycleId}/write/${assignment.target.id}`}>
+                      <Link href={`/reviews/${cycleId}/write/${assignment.target.id}`}>
                         {assignment.review ? "이어서 작성" : "평가 작성"}
                       </Link>
                     </Button>

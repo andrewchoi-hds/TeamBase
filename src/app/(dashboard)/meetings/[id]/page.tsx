@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -18,39 +18,40 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Plus, Send, Calendar, Clock, Loader2 } from "lucide-react";
 
-export default function MeetingDetailPage({ params }: { params: { id: string } }) {
+export default function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [noteContent, setNoteContent] = useState("");
   const [newAction, setNewAction] = useState("");
 
   const { data: meeting, isLoading } = useQuery({
-    queryKey: ["meeting", params.id],
-    queryFn: () => api.get<any>(`/meetings/${params.id}`),
+    queryKey: ["meeting", id],
+    queryFn: () => api.get<any>(`/meetings/${id}`),
   });
 
   const addNoteMutation = useMutation({
-    mutationFn: () => api.post(`/meetings/${params.id}/notes`, { content: noteContent }),
+    mutationFn: () => api.post(`/meetings/${id}/notes`, { content: noteContent }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meeting", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["meeting", id] });
       setNoteContent("");
       toast.success("노트가 추가되었습니다.");
     },
   });
 
   const addActionMutation = useMutation({
-    mutationFn: () => api.post(`/meetings/${params.id}/action-items`, { title: newAction }),
+    mutationFn: () => api.post(`/meetings/${id}/action-items`, { title: newAction }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meeting", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["meeting", id] });
       setNewAction("");
       toast.success("액션 아이템이 추가되었습니다.");
     },
   });
 
   const statusMutation = useMutation({
-    mutationFn: (status: string) => api.patch(`/meetings/${params.id}`, { status }),
+    mutationFn: (status: string) => api.patch(`/meetings/${id}`, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meeting", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["meeting", id] });
       toast.success("상태가 변경되었습니다.");
     },
   });

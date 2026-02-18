@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Loader2 } from "lucide-react";
 
-export default function ObjectiveDetailPage({ params }: { params: { id: string } }) {
+export default function ObjectiveDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const queryClient = useQueryClient();
   const [krOpen, setKrOpen] = useState(false);
   const [krTitle, setKrTitle] = useState("");
@@ -24,14 +25,14 @@ export default function ObjectiveDetailPage({ params }: { params: { id: string }
   const [krUnit, setKrUnit] = useState("");
 
   const { data: objective, isLoading } = useQuery({
-    queryKey: ["objective", params.id],
-    queryFn: () => api.get<any>(`/objectives/${params.id}`),
+    queryKey: ["objective", id],
+    queryFn: () => api.get<any>(`/objectives/${id}`),
   });
 
   const addKrMutation = useMutation({
-    mutationFn: () => api.post(`/objectives/${params.id}/key-results`, { title: krTitle, targetValue: Number(krTarget), unit: krUnit }),
+    mutationFn: () => api.post(`/objectives/${id}/key-results`, { title: krTitle, targetValue: Number(krTarget), unit: krUnit }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["objective", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["objective", id] });
       toast.success("핵심 결과가 추가되었습니다.");
       setKrOpen(false);
       setKrTitle("");
@@ -42,17 +43,17 @@ export default function ObjectiveDetailPage({ params }: { params: { id: string }
 
   const checkInMutation = useMutation({
     mutationFn: ({ krId, value, note }: { krId: string; value: number; note?: string }) =>
-      api.post(`/objectives/${params.id}/key-results/${krId}/check-ins`, { value, note }),
+      api.post(`/objectives/${id}/key-results/${krId}/check-ins`, { value, note }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["objective", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["objective", id] });
       toast.success("체크인이 기록되었습니다.");
     },
   });
 
   const statusMutation = useMutation({
-    mutationFn: (status: string) => api.patch(`/objectives/${params.id}`, { status }),
+    mutationFn: (status: string) => api.patch(`/objectives/${id}`, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["objective", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["objective", id] });
       toast.success("상태가 변경되었습니다.");
     },
   });

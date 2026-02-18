@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,7 +19,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function AnonymousFeedbackPage({ params }: { params: { token: string } }) {
+export default function AnonymousFeedbackPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "submitted">("loading");
   const [targetName, setTargetName] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -31,10 +32,16 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
   });
 
   useEffect(() => {
+    if (!token) {
+      setStatus("invalid");
+      setErrorMsg("토큰이 없습니다.");
+      return;
+    }
+
     fetch("/api/feedback/anonymous/validate-token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: params.token }),
+      body: JSON.stringify({ token }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -50,7 +57,7 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
         setStatus("invalid");
         setErrorMsg("토큰 검증에 실패했습니다.");
       });
-  }, [params.token]);
+  }, [token]);
 
   const onSubmit = async (data: FormData) => {
     setSubmitting(true);
@@ -58,7 +65,7 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
       const res = await fetch("/api/feedback/anonymous/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: params.token, ...data }),
+        body: JSON.stringify({ token, ...data }),
       });
       if (!res.ok) {
         const body = await res.json();

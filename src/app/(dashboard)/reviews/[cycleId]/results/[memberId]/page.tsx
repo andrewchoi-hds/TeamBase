@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
@@ -15,15 +16,16 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function MemberReviewResultPage({ params }: { params: { cycleId: string; memberId: string } }) {
+export default function MemberReviewResultPage({ params }: { params: Promise<{ cycleId: string; memberId: string }> }) {
+  const { cycleId, memberId } = use(params);
   const { data: reviews, isLoading } = useQuery({
-    queryKey: ["review-results", params.cycleId, params.memberId],
-    queryFn: () => api.get<any[]>(`/reviews?type=received&cycleId=${params.cycleId}`),
+    queryKey: ["review-results", cycleId, memberId],
+    queryFn: () => api.get<any[]>(`/reviews?type=received&cycleId=${cycleId}`),
   });
 
   if (isLoading) return <LoadingState rows={5} />;
 
-  const targetReviews = reviews?.filter((r: any) => r.target.id === params.memberId && r.status === "SUBMITTED") ?? [];
+  const targetReviews = reviews?.filter((r: any) => r.target.id === memberId && r.status === "SUBMITTED") ?? [];
   const targetName = targetReviews[0]?.target?.name ?? "";
 
   // Calculate averages by category

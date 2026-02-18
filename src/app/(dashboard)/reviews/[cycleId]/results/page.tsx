@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -10,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ChevronRight } from "lucide-react";
 
-export default function ReviewResultsPage({ params }: { params: { cycleId: string } }) {
+export default function ReviewResultsPage({ params }: { params: Promise<{ cycleId: string }> }) {
+  const { cycleId } = use(params);
   const { data: cycle, isLoading } = useQuery({
-    queryKey: ["review-cycle", params.cycleId],
-    queryFn: () => api.get<any>(`/review-cycles/${params.cycleId}`),
+    queryKey: ["review-cycle", cycleId],
+    queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
   });
 
   if (isLoading) return <LoadingState rows={5} />;
@@ -38,7 +40,7 @@ export default function ReviewResultsPage({ params }: { params: { cycleId: strin
       <PageHeader title={`${cycle.name} - 결과`} description="평가 대상자별 결과를 확인하세요." />
       <div className="space-y-3">
         {targets.map((target) => (
-          <Link key={target.id} href={`/reviews/${params.cycleId}/results/${target.id}`}>
+          <Link key={target.id} href={`/reviews/${cycleId}/results/${target.id}`}>
             <Card className="hover:shadow-sm transition-shadow cursor-pointer">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
