@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
   const searchParams = req.nextUrl.searchParams;
   const type = searchParams.get("type"); // "written" | "received"
   const cycleId = searchParams.get("cycleId");
-
   const targetId = searchParams.get("targetId");
 
   let where: any;
@@ -34,57 +34,47 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(reviews);
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
-  try {
-    const body = await req.json();
-    const { assignmentId, cycleId, targetId, overallComment, responses } = body;
+  const body = await req.json();
+  const { assignmentId, cycleId, targetId, overallComment, responses } = body;
 
-    // Validate required fields
-    if (!assignmentId || !cycleId || !targetId) {
-      return badRequest("assignmentId, cycleId, and targetId are required");
-    }
-
-    // Create review
-    const review = await prisma.review.create({
-      data: {
-        assignmentId,
-        cycleId,
-        authorId: user.id,
-        targetId,
-        status: "DRAFT",
-        overallComment: overallComment || null,
-      },
-    });
-
-    // Create responses separately (compatible with mock-prisma)
-    if (responses && Array.isArray(responses)) {
-      for (const r of responses) {
-        await prisma.reviewResponse.create({
-          data: {
-            reviewId: review.id,
-            criterionId: r.criterionId,
-            rating: r.rating,
-            comment: r.comment || null,
-          },
-        });
-      }
-    }
-
-    // Update assignment status to IN_PROGRESS
-    await prisma.reviewAssignment.update({
-      where: { id: assignmentId },
-      data: { status: "IN_PROGRESS" },
-    });
-
-    return NextResponse.json(review, { status: 201 });
-  } catch (error) {
-    console.error("Error creating review:", error);
-    return NextResponse.json(
-      { error: "Failed to create review" },
-      { status: 500 }
-    );
+  if (!assignmentId || !cycleId || !targetId) {
+    return badRequest("assignmentId, cycleId, and targetId are required");
   }
+
+  const review = await prisma.review.create({
+    data: {
+      assignmentId,
+      cycleId,
+      authorId: user.id,
+      targetId,
+      status: "DRAFT",
+      overallComment: overallComment || null,
+    },
+  });
+
+  // 응답 일괄 생성
+  if (responses && Array.isArray(responses) && responses.length > 0) {
+    await prisma.reviewResponse.createMany({
+      data: responses.map((r: any) => ({
+        reviewId: review.id,
+        criterionId: r.criterionId,
+        rating: r.rating,
+        comment: r.comment || null,
+      })),
+    });
+  }
+
+  await prisma.reviewAssignment.update({
+    where: { id: assignmentId },
+    data: { status: "IN_PROGRESS" },
+  });
+
+  return NextResponse.json(review, { status: 201 });
 }
+
+export const GET = withErrorHandler(handleGET);
+export const POST = withErrorHandler(handlePOST);

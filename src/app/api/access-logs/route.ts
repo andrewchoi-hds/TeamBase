@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
 import { accessLogService } from "@/lib/services/access-log.service";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
   const searchParams = req.nextUrl.searchParams;
-  const type = searchParams.get("type"); // "viewer" | "target"
+  const type = searchParams.get("type");
   const limit = Number(searchParams.get("limit") || 20);
   const offset = Number(searchParams.get("offset") || 0);
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -34,3 +35,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(log ?? { skipped: true }, { status: 201 });
 }
+
+export const GET = withErrorHandler(handleGET);
+export const POST = withErrorHandler(handlePOST);

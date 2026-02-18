@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET() {
+async function handleGET() {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -35,3 +36,5 @@ export async function GET() {
     avgOkrProgress: avgProgress,
   });
 }
+
+export const GET = withErrorHandler(handleGET);

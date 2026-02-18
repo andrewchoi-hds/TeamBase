@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET() {
+async function handleGET() {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -15,10 +16,12 @@ export async function GET() {
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json(departments);
+  return NextResponse.json(departments, {
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+  });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN") return forbidden();
@@ -30,3 +33,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(dept, { status: 201 });
 }
+
+export const GET = withErrorHandler(handleGET);
+export const POST = withErrorHandler(handlePOST);

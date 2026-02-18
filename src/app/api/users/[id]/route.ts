@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden, notFound } from "@/lib/auth-utils";
 import { accessLogService } from "@/lib/services/access-log.service";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+async function handleGET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -19,7 +20,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   if (!targetUser) return notFound("사용자를 찾을 수 없습니다.");
 
-  // Log profile access
   await accessLogService.log({
     viewerId: user.id,
     targetId: params.id,
@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(targetUser);
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+async function handlePATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN" && user.id !== params.id) return forbidden();
@@ -50,3 +50,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json(updated);
 }
+
+export const GET = withErrorHandler(handleGET);
+export const PATCH = withErrorHandler(handlePATCH);

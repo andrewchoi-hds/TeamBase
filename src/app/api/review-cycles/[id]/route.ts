@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden, notFound } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+async function handleGET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -25,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(cycle);
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+async function handlePATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return forbidden();
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json(cycle);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN") return forbidden();
@@ -53,3 +54,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   await prisma.reviewCycle.delete({ where: { id: params.id } });
   return NextResponse.json({ message: "삭제되었습니다." });
 }
+
+export const GET = withErrorHandler(handleGET);
+export const PATCH = withErrorHandler(handlePATCH);
+export const DELETE = withErrorHandler(handleDELETE);

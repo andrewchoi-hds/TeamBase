@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+async function handleGET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(assignments);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function handlePOST(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return forbidden();
@@ -34,3 +35,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json(result, { status: 201 });
 }
+
+export const GET = withErrorHandler(handleGET);
+export const POST = withErrorHandler(handlePOST);

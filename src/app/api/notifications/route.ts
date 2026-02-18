@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, unauthorized } from "@/lib/auth-utils";
 import { notificationService } from "@/lib/services/notification.service";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
 
@@ -19,3 +20,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(result);
 }
+
+export const GET = withErrorHandler(handleGET);

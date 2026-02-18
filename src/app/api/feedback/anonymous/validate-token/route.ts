@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { anonymousFeedbackService } from "@/lib/services/anonymous-feedback.service";
 import prisma from "@/lib/prisma";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const { token } = await req.json();
 
   if (!token) {
@@ -15,7 +16,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ valid: false, error: result.error }, { status: 400 });
   }
 
-  // Only return target name, not ID (privacy)
   const target = await prisma.user.findUnique({
     where: { id: result.targetId },
     select: { name: true },
@@ -23,3 +23,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ valid: true, targetName: target?.name });
 }
+
+export const POST = withErrorHandler(handlePOST);

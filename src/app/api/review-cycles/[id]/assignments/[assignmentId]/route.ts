@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: { id: string; assignmentId: string } }
 ) {
@@ -16,3 +17,5 @@ export async function DELETE(
 
   return NextResponse.json({ message: "삭제되었습니다." });
 }
+
+export const DELETE = withErrorHandler(handleDELETE);

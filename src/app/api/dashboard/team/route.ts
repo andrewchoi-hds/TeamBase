@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function GET() {
+async function handleGET() {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return forbidden();
@@ -30,3 +31,5 @@ export async function GET() {
       : 0,
   });
 }
+
+export const GET = withErrorHandler(handleGET);

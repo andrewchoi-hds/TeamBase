@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
 import { anonymousFeedbackService } from "@/lib/services/anonymous-feedback.service";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return forbidden();
@@ -18,3 +19,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ tokens, urls, count }, { status: 201 });
 }
+
+export const POST = withErrorHandler(handlePOST);
