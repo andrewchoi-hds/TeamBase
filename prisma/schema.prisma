@@ -246,6 +246,8 @@ model Review {
   @@index([cycleId])
   @@index([authorId])
   @@index([targetId])
+  @@index([createdAt])
+  @@index([status])
 }
 
 model ReviewResponse {

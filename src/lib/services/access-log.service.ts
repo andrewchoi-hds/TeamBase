@@ -23,7 +23,7 @@ export const accessLogService = {
     if (input.viewerId === input.targetId) return null;
 
     const [log, viewer] = await Promise.all([
-      prisma.accessLog.create({ data: input }),
+      prisma.accessLog.create({ data: { ...input, notificationSent: true } }),
       prisma.user.findUnique({ where: { id: input.viewerId }, select: { name: true } }),
     ]);
 
@@ -34,12 +34,6 @@ export const accessLogService = {
       title: "열람 알림",
       message: `${viewer?.name ?? "누군가"}님이 회원님의 ${resourceTypeLabels[input.resourceType]} 정보를 열람했습니다.`,
       link: "/notifications",
-    });
-
-    // Mark notification as sent
-    await prisma.accessLog.update({
-      where: { id: log.id },
-      data: { notificationSent: true },
     });
 
     return log;
