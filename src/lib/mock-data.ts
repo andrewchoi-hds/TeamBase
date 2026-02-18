@@ -5,7 +5,7 @@ const day = (n: number) => new Date(Date.now() + n * 86400000);
 
 // ============ Departments ============
 export const departments = [
-  { id: "dept-dev", name: "개발팀", parentId: null, createdAt: now, updatedAt: now, parent: null, children: [], _count: { users: 4 } },
+  { id: "dept-dev", name: "개발팀", parentId: null, createdAt: now, updatedAt: now, parent: null, children: [], _count: { users: 5 } },
   { id: "dept-mkt", name: "마케팅팀", parentId: null, createdAt: now, updatedAt: now, parent: null, children: [], _count: { users: 4 } },
 ];
 
@@ -106,7 +106,7 @@ export const reviewCycles: any[] = [
     status: "ACTIVE", startDate: new Date("2024-06-01"), endDate: new Date("2024-06-30"),
     templateId: "tmpl-1", createdAt: now, updatedAt: now,
     template: reviewTemplates[0],
-    _count: { assignments: 8, reviews: 2 },
+    _count: { assignments: 6, reviews: 2 },
   },
   {
     id: "cycle-2", name: "2024년 하반기 평가", description: "2024년 하반기 정기 성과 평가",

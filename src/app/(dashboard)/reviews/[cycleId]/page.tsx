@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -12,10 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Play, BarChart3, Loader2 } from "lucide-react";
+import { Play, BarChart3, Loader2, Plus, Trash2 } from "lucide-react";
 
 const reviewTypeLabels: Record<string, string> = {
   SELF: "자기평가",
@@ -27,10 +29,20 @@ const reviewTypeLabels: Record<string, string> = {
 export default function ReviewCycleDetailPage({ params }: { params: { cycleId: string } }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newReviewerId, setNewReviewerId] = useState("");
+  const [newTargetId, setNewTargetId] = useState("");
+  const [newReviewType, setNewReviewType] = useState("PEER");
 
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", params.cycleId],
     queryFn: () => api.get<any>(`/review-cycles/${params.cycleId}`),
+  });
+
+  const { data: users } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<any[]>("/users"),
+    enabled: showAddForm,
   });
 
   const activateMutation = useMutation({
@@ -39,6 +51,32 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
       queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
       toast.success("평가 주기가 시작되었습니다.");
     },
+  });
+
+  const addAssignmentMutation = useMutation({
+    mutationFn: () =>
+      api.post(`/review-cycles/${params.cycleId}/assignments`, {
+        assignments: [{ reviewerId: newReviewerId, targetId: newTargetId, reviewType: newReviewType }],
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
+      toast.success("평가 배정이 추가되었습니다.");
+      setShowAddForm(false);
+      setNewReviewerId("");
+      setNewTargetId("");
+      setNewReviewType("PEER");
+    },
+    onError: () => toast.error("배정 추가에 실패했습니다."),
+  });
+
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: (assignmentId: string) =>
+      api.delete(`/review-cycles/${params.cycleId}/assignments/${assignmentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", params.cycleId] });
+      toast.success("배정이 삭제되었습니다.");
+    },
+    onError: () => toast.error("배정 삭제에 실패했습니다."),
   });
 
   if (isLoading) return <LoadingState rows={5} />;
@@ -121,10 +159,60 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
       {/* All Assignments (Manager/Admin view) */}
       <RoleGate roles={["ADMIN", "MANAGER"]}>
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">전체 평가 현황</CardTitle>
+            {cycle.status === "DRAFT" && (
+              <Button size="sm" variant="outline" onClick={() => setShowAddForm(!showAddForm)}>
+                <Plus className="mr-1 h-4 w-4" />
+                배정 추가
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
+            {/* Add Assignment Form */}
+            {showAddForm && cycle.status === "DRAFT" && (
+              <div className="mb-4 p-4 rounded-lg border bg-muted/50 space-y-3">
+                <p className="text-sm font-medium">새 평가 배정</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Select value={newReviewerId} onValueChange={setNewReviewerId}>
+                    <SelectTrigger><SelectValue placeholder="평가자 선택" /></SelectTrigger>
+                    <SelectContent>
+                      {(users ?? []).map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.position})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={newTargetId} onValueChange={setNewTargetId}>
+                    <SelectTrigger><SelectValue placeholder="대상자 선택" /></SelectTrigger>
+                    <SelectContent>
+                      {(users ?? []).map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.position})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={newReviewType} onValueChange={setNewReviewType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(reviewTypeLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => addAssignmentMutation.mutate()}
+                    disabled={!newReviewerId || !newTargetId || addAssignmentMutation.isPending}
+                  >
+                    {addAssignmentMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                    추가
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>취소</Button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               {cycle.assignments?.map((assignment: any) => (
                 <div key={assignment.id} className="flex items-center justify-between py-2 border-b last:border-0">
@@ -134,9 +222,24 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
                     <span>{assignment.target.name}</span>
                     <Badge variant="outline" className="text-xs">{reviewTypeLabels[assignment.reviewType]}</Badge>
                   </div>
-                  <StatusBadge status={assignment.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={assignment.status} />
+                    {cycle.status === "DRAFT" && assignment.status === "PENDING" && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
+              {(!cycle.assignments || cycle.assignments.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">배정된 평가가 없습니다.</p>
+              )}
             </div>
           </CardContent>
         </Card>

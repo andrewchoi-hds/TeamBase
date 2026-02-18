@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, unauthorized } from "@/lib/auth-utils";
+import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -32,4 +32,59 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(reviews);
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
+  try {
+    const body = await req.json();
+    const { assignmentId, cycleId, targetId, overallComment, responses } = body;
+
+    // Validate required fields
+    if (!assignmentId || !cycleId || !targetId) {
+      return badRequest("assignmentId, cycleId, and targetId are required");
+    }
+
+    // Create review
+    const review = await prisma.review.create({
+      data: {
+        assignmentId,
+        cycleId,
+        authorId: user.id,
+        targetId,
+        status: "DRAFT",
+        overallComment: overallComment || null,
+      },
+    });
+
+    // Create responses separately (compatible with mock-prisma)
+    if (responses && Array.isArray(responses)) {
+      for (const r of responses) {
+        await prisma.reviewResponse.create({
+          data: {
+            reviewId: review.id,
+            criterionId: r.criterionId,
+            rating: r.rating,
+            comment: r.comment || null,
+          },
+        });
+      }
+    }
+
+    // Update assignment status to IN_PROGRESS
+    await prisma.reviewAssignment.update({
+      where: { id: assignmentId },
+      data: { status: "IN_PROGRESS" },
+    });
+
+    return NextResponse.json(review, { status: 201 });
+  } catch (error) {
+    console.error("Error creating review:", error);
+    return NextResponse.json(
+      { error: "Failed to create review" },
+      { status: 500 }
+    );
+  }
 }
