@@ -28,8 +28,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                document.documentElement.style.backgroundColor = '#fff';
+                document.documentElement.style.colorScheme = 'light';
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{ backgroundColor: 'hsl(0 0% 100%)', color: 'hsl(0 0% 3.9%)' }}
       >
         <Providers>{children}</Providers>
       </body>
