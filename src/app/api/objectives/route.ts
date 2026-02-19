@@ -13,8 +13,15 @@ async function handleGET(req: NextRequest) {
 
   const where: any = {};
   if (level) where.level = level;
-  if (ownerId) where.ownerId = ownerId;
-  else if (user.role === "MEMBER") where.ownerId = user.id;
+  if (ownerId) {
+    // 다른 사용자의 목표 조회: ADMIN/MANAGER만 가능
+    if (ownerId !== user.id && user.role !== "ADMIN" && user.role !== "MANAGER") {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
+    where.ownerId = ownerId;
+  } else if (user.role === "MEMBER") {
+    where.ownerId = user.id;
+  }
 
   const objectives = await prisma.objective.findMany({
     where,

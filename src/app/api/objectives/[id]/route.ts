@@ -23,7 +23,12 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
 
   if (!objective) return notFound("목표를 찾을 수 없습니다.");
 
-  if (objective.ownerId !== user.id) {
+  // 소유권 검증: 소유자, ADMIN, MANAGER만 조회 가능
+  const isOwner = objective.ownerId === user.id;
+  const isPrivileged = user.role === "ADMIN" || user.role === "MANAGER";
+  if (!isOwner && !isPrivileged) return forbidden();
+
+  if (!isOwner) {
     await accessLogService.log({
       viewerId: user.id,
       targetId: objective.ownerId,

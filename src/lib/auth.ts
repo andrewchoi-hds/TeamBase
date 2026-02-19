@@ -1,10 +1,12 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import prisma from "./prisma";
 
-// Mock mode: all mock users use "password123" as password
-const MOCK_MODE = true;
-const MOCK_PASSWORD = "password123";
+// 프로덕션에서 NEXTAUTH_SECRET 필수 검증
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET 환경변수가 설정되지 않았습니다.");
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -27,21 +29,16 @@ export const authOptions: NextAuthOptions = {
           throw new Error("등록되지 않은 사용자이거나 비활성 계정입니다.");
         }
 
-        if (MOCK_MODE) {
-          // In mock mode, accept the fixed password
-          if (credentials.password !== MOCK_PASSWORD) {
-            throw new Error("비밀번호가 올바르지 않습니다.");
-          }
-        } else {
-          // Real mode: use bcrypt
-          const bcrypt = await import("bcryptjs");
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.passwordHash
-          );
-          if (!isPasswordValid) {
-            throw new Error("비밀번호가 올바르지 않습니다.");
-          }
+        if (!user.passwordHash) {
+          throw new Error("비밀번호가 설정되지 않은 계정입니다. 관리자에게 문의하세요.");
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        );
+        if (!isPasswordValid) {
+          throw new Error("비밀번호가 올바르지 않습니다.");
         }
 
         return {
@@ -81,7 +78,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

@@ -20,11 +20,20 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
 
   if (!targetUser) return notFound("사용자를 찾을 수 없습니다.");
 
-  await accessLogService.log({
-    viewerId: user.id,
-    targetId: params.id,
-    resourceType: "PROFILE",
-  });
+  // 타인의 프로필 조회 시 접근 로그 기록
+  if (user.id !== params.id) {
+    await accessLogService.log({
+      viewerId: user.id,
+      targetId: params.id,
+      resourceType: "PROFILE",
+    });
+  }
+
+  // 본인/ADMIN/MANAGER가 아닌 경우 민감 정보 제외
+  if (user.id !== params.id && user.role !== "ADMIN" && user.role !== "MANAGER") {
+    const { email: _email, ...publicInfo } = targetUser;
+    return NextResponse.json(publicInfo);
+  }
 
   return NextResponse.json(targetUser);
 }

@@ -16,6 +16,11 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
   });
 
   if (!feedback) return notFound();
+
+  // 소유권 검증: 작성자, 대상자, 또는 ADMIN만 조회 가능
+  const isParticipant = feedback.authorId === user.id || feedback.targetId === user.id;
+  if (!isParticipant && user.role !== "ADMIN") return forbidden();
+
   return NextResponse.json(feedback);
 }
 

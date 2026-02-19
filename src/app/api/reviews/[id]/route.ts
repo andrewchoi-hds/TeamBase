@@ -19,6 +19,12 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
   });
 
   if (!review) return notFound("평가를 찾을 수 없습니다.");
+
+  // 소유권 검증: 작성자, 대상자, 또는 ADMIN/MANAGER만 조회 가능
+  const isParticipant = review.authorId === user.id || review.targetId === user.id;
+  const isPrivileged = user.role === "ADMIN" || user.role === "MANAGER";
+  if (!isParticipant && !isPrivileged) return forbidden();
+
   return NextResponse.json(review);
 }
 

@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, unauthorized } from "@/lib/auth-utils";
+import { getCurrentUser, unauthorized, forbidden, notFound } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+
+async function verifyObjectiveOwnership(objectiveId: string, userId: string, userRole: string) {
+  const objective = await prisma.objective.findUnique({
+    where: { id: objectiveId },
+    select: { ownerId: true },
+  });
+  if (!objective) return { allowed: false, notFound: true } as const;
+  return { allowed: objective.ownerId === userId || userRole === "ADMIN", notFound: false } as const;
+}
 
 async function handleGET(_req: NextRequest, { params }: { params: { id: string; krId: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
+
+  const access = await verifyObjectiveOwnership(params.id, user.id, user.role);
+  if (access.notFound) return notFound("목표를 찾을 수 없습니다.");
+  if (!access.allowed) return forbidden();
 
   const checkIns = await prisma.keyResultCheckIn.findMany({
     where: { keyResultId: params.krId },
@@ -18,6 +31,10 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string; 
 async function handlePOST(req: NextRequest, { params }: { params: { id: string; krId: string } }) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
+
+  const access = await verifyObjectiveOwnership(params.id, user.id, user.role);
+  if (access.notFound) return notFound("목표를 찾을 수 없습니다.");
+  if (!access.allowed) return forbidden();
 
   const data = await req.json();
   const checkIn = await prisma.keyResultCheckIn.create({

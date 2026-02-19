@@ -23,6 +23,15 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
   });
 
   if (!cycle) return notFound("평가 주기를 찾을 수 없습니다.");
+
+  // ADMIN/MANAGER 또는 해당 평가 주기에 배정된 사용자만 조회 가능
+  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
+    const isAssigned = cycle.assignments.some(
+      (a: any) => a.reviewer?.id === user.id || a.target?.id === user.id
+    );
+    if (!isAssigned) return forbidden();
+  }
+
   return NextResponse.json(cycle);
 }
 

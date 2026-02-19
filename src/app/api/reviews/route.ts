@@ -14,7 +14,12 @@ async function handleGET(req: NextRequest) {
 
   let where: any;
   if (type === "received") {
-    where = { targetId: targetId || user.id, ...(cycleId ? { cycleId } : {}) };
+    // targetId가 지정된 경우: 본인 또는 ADMIN/MANAGER만 다른 사용자 조회 가능
+    const effectiveTargetId = targetId || user.id;
+    if (effectiveTargetId !== user.id && user.role !== "ADMIN" && user.role !== "MANAGER") {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
+    where = { targetId: effectiveTargetId, ...(cycleId ? { cycleId } : {}) };
   } else {
     where = { authorId: user.id, ...(cycleId ? { cycleId } : {}) };
   }

@@ -2,7 +2,10 @@ import { createHash, randomBytes } from "crypto";
 import prisma from "@/lib/prisma";
 import { FeedbackCategory } from "@prisma/client";
 
-const FEEDBACK_SALT = process.env.FEEDBACK_SALT || "default-salt";
+const FEEDBACK_SALT = process.env.FEEDBACK_SALT;
+if (!FEEDBACK_SALT) {
+  throw new Error("FEEDBACK_SALT 환경변수가 설정되지 않았습니다.");
+}
 const MIN_FEEDBACK_COUNT = 3;
 
 function hashToken(token: string): string {

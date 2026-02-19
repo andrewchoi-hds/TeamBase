@@ -16,6 +16,14 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
     },
   });
 
+  // ADMIN/MANAGER는 전체 조회, 일반 사용자는 본인 관련 배정만
+  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
+    const filtered = assignments.filter(
+      (a: any) => a.reviewer?.id === user.id || a.target?.id === user.id
+    );
+    return NextResponse.json(filtered);
+  }
+
   return NextResponse.json(assignments);
 }
 

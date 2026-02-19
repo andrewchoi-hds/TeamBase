@@ -24,6 +24,11 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
   });
 
   if (!meeting) return notFound("미팅을 찾을 수 없습니다.");
+
+  // 소유권 검증: 주최자, 참가자, 또는 ADMIN만 조회 가능
+  const isMeetingParticipant = meeting.organizerId === user.id || meeting.participantId === user.id;
+  if (!isMeetingParticipant && user.role !== "ADMIN") return forbidden();
+
   return NextResponse.json(meeting);
 }
 
