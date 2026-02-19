@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden, notFound } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { auditLogService } from "@/lib/services/audit-log.service";
 
 async function handleGET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -70,6 +71,14 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
     }
 
     return updated;
+  });
+
+  await auditLogService.log({
+    action: "UPDATE",
+    entityType: "REVIEW",
+    entityId: params.id,
+    userId: user.id,
+    changes: { overallRating: data.overallRating, responsesCount: data.responses?.length },
   });
 
   return NextResponse.json(review);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ExportButton } from "@/components/common/export-button";
+import { GradeBadge } from "@/components/review/grade-badge";
 import type { AggregatedReport } from "@/lib/utils/review-aggregation";
 
 const reviewTypeLabels: Record<string, string> = {
@@ -23,14 +25,17 @@ const reviewTypeLabels: Record<string, string> = {
 export default function MemberReviewResultPage({ params }: { params: { cycleId: string; memberId: string } }) {
   const { cycleId, memberId } = params;
 
+  const { data: session } = useSession();
+
   const { data: report, isLoading } = useQuery({
     queryKey: ["review-report", cycleId, memberId],
-    queryFn: () => api.get<AggregatedReport>(`/review-cycles/${cycleId}/results/${memberId}/report`),
+    queryFn: () => api.get<AggregatedReport & { canViewIndividualReviews?: boolean }>(`/review-cycles/${cycleId}/results/${memberId}/report`),
   });
 
   const { data: reviews } = useQuery({
     queryKey: ["review-results", cycleId, memberId],
-    queryFn: () => api.get<any[]>(`/reviews?type=received&cycleId=${cycleId}`),
+    queryFn: () => api.get<any[]>(`/reviews?type=received&cycleId=${cycleId}&targetId=${memberId}`),
+    enabled: report?.canViewIndividualReviews !== false,
   });
 
   if (isLoading) return <LoadingState rows={5} />;
@@ -44,6 +49,9 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
         title={`${report.targetName} 360도 리뷰 리포트`}
         description={`총 ${report.totalReviews}건의 평가`}
       >
+        {report.overallAvgScore > 0 && (
+          <GradeBadge score={report.overallAvgScore} size="lg" />
+        )}
         <ExportButton
           filename={`${report.targetName}_360도_리포트`}
           headers={["카테고리", "평가 항목", "자기평가", "타인평가", "갭"]}
@@ -103,51 +111,55 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
 
       <StrengthWeakness strengths={report.strengths} weaknesses={report.weaknesses} />
 
-      <Separator />
+      {report.canViewIndividualReviews !== false && (
+        <>
+          <Separator />
 
-      {/* Individual Reviews */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">개별 평가 내역</h2>
-        <div className="space-y-4">
-          {targetReviews.map((review: any) => (
-            <Card key={review.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{review.author.name}</CardTitle>
-                  <Badge variant="outline">{reviewTypeLabels[review.assignment?.reviewType] ?? ""}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {review.responses?.map((resp: any, i: number) => (
-                  <div key={resp.id || i}>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm">{resp.criterion?.name}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(n => (
-                            <div key={n} className={`h-2 w-4 rounded-sm ${n <= resp.rating ? "bg-primary" : "bg-muted"}`} />
-                          ))}
+          {/* Individual Reviews */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4">개별 평가 내역</h2>
+            <div className="space-y-4">
+              {targetReviews.map((review: any) => (
+                <Card key={review.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{review.author.name}</CardTitle>
+                      <Badge variant="outline">{reviewTypeLabels[review.assignment?.reviewType] ?? ""}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {review.responses?.map((resp: any, i: number) => (
+                      <div key={resp.id || i}>
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-sm">{resp.criterion?.name}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-0.5">
+                              {[1,2,3,4,5].map(n => (
+                                <div key={n} className={`h-2 w-4 rounded-sm ${n <= resp.rating ? "bg-primary" : "bg-muted"}`} />
+                              ))}
+                            </div>
+                            <span className="text-sm font-medium w-6 text-right">{resp.rating}</span>
+                          </div>
                         </div>
-                        <span className="text-sm font-medium w-6 text-right">{resp.rating}</span>
+                        {resp.comment && <p className="text-sm text-muted-foreground mb-2 pl-2 border-l-2">{resp.comment}</p>}
                       </div>
-                    </div>
-                    {resp.comment && <p className="text-sm text-muted-foreground mb-2 pl-2 border-l-2">{resp.comment}</p>}
-                  </div>
-                ))}
-                {review.overallComment && (
-                  <>
-                    <Separator className="my-3" />
-                    <div>
-                      <p className="text-sm font-medium mb-1">종합 의견</p>
-                      <p className="text-sm text-muted-foreground">{review.overallComment}</p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+                    ))}
+                    {review.overallComment && (
+                      <>
+                        <Separator className="my-3" />
+                        <div>
+                          <p className="text-sm font-medium mb-1">종합 의견</p>
+                          <p className="text-sm text-muted-foreground">{review.overallComment}</p>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

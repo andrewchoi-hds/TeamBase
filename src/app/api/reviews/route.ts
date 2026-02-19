@@ -36,6 +36,20 @@ async function handleGET(req: NextRequest) {
     orderBy: { updatedAt: "desc" },
   });
 
+  // MEMBER가 type=received 조회 시: 작성자 익명화, 코멘트 제거
+  if (type === "received" && user.role === "MEMBER") {
+    const anonymized = reviews.map((r: any) => ({
+      ...r,
+      author: { id: "anonymous", name: "익명" },
+      overallComment: null,
+      responses: r.responses.map((resp: any) => ({
+        ...resp,
+        comment: null,
+      })),
+    }));
+    return NextResponse.json(anonymized);
+  }
+
   return NextResponse.json(reviews);
 }
 

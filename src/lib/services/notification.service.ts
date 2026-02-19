@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NotificationType } from "@prisma/client";
+import { sendEmail } from "@/lib/email/send-email";
+import { getEmailTemplate, EMAIL_TYPES } from "@/lib/email/templates";
 
 interface CreateNotificationInput {
   userId: string;
@@ -11,11 +13,59 @@ interface CreateNotificationInput {
 
 export const notificationService = {
   async create(input: CreateNotificationInput) {
-    return prisma.notification.create({ data: input });
+    const notification = await prisma.notification.create({ data: input });
+
+    if (EMAIL_TYPES.includes(input.type)) {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true, name: true },
+      });
+      if (user?.email) {
+        const html = getEmailTemplate(input.type, {
+          title: input.title,
+          message: input.message,
+          link: input.link,
+          userName: user.name,
+        });
+        if (html) {
+          await sendEmail({ to: user.email, subject: input.title, html });
+        }
+      }
+    }
+
+    return notification;
   },
 
   async createMany(inputs: CreateNotificationInput[]) {
-    return prisma.notification.createMany({ data: inputs });
+    const result = await prisma.notification.createMany({ data: inputs });
+
+    // 이메일 대상 알림만 필터링하여 비동기 발송
+    const emailTargets = inputs.filter((i) => EMAIL_TYPES.includes(i.type));
+    if (emailTargets.length > 0) {
+      const userIds = Array.from(new Set(emailTargets.map((i) => i.userId)));
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, email: true, name: true },
+      });
+      const userMap = new Map(users.map((u) => [u.id, u]));
+
+      await Promise.allSettled(
+        emailTargets.map((input) => {
+          const user = userMap.get(input.userId);
+          if (!user?.email) return Promise.resolve();
+          const html = getEmailTemplate(input.type, {
+            title: input.title,
+            message: input.message,
+            link: input.link,
+            userName: user.name,
+          });
+          if (!html) return Promise.resolve();
+          return sendEmail({ to: user.email, subject: input.title, html });
+        })
+      );
+    }
+
+    return result;
   },
 
   async getByUserId(userId: string, { isRead, limit = 20, offset = 0 }: { isRead?: boolean; limit?: number; offset?: number } = {}) {

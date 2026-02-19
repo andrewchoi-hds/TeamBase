@@ -17,8 +17,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Play, BarChart3, Loader2, Plus, Trash2 } from "lucide-react";
+import { Play, BarChart3, Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
 import { BulkAssignmentDialog } from "@/components/review/bulk-assignment-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { CycleStatusDashboard } from "@/components/review/cycle-status-dashboard";
 
 const reviewTypeLabels: Record<string, string> = {
   SELF: "자기평가",
@@ -29,7 +43,7 @@ const reviewTypeLabels: Record<string, string> = {
 
 export default function ReviewCycleDetailPage({ params }: { params: { cycleId: string } }) {
   const { cycleId } = params;
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newReviewerId, setNewReviewerId] = useState("");
@@ -81,7 +95,19 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
     onError: () => toast.error("배정 삭제에 실패했습니다."),
   });
 
-  if (isLoading) return <LoadingState rows={5} />;
+  const [reopenReason, setReopenReason] = useState("");
+  const reopenMutation = useMutation({
+    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason?: string }) =>
+      api.post(`/review-cycles/${cycleId}/assignments/${assignmentId}/reopen`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
+      toast.success("평가가 재오픈되었습니다.");
+      setReopenReason("");
+    },
+    onError: () => toast.error("재오픈에 실패했습니다."),
+  });
+
+  if (sessionStatus === "loading" || isLoading) return <LoadingState rows={5} />;
   if (!cycle) return null;
 
   const myAssignments = cycle.assignments?.filter((a: any) => a.reviewerId === session?.user?.id) ?? [];
@@ -160,6 +186,17 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
 
       {/* All Assignments (Manager/Admin view) */}
       <RoleGate roles={["ADMIN", "MANAGER"]}>
+        <Tabs defaultValue="assignments">
+          <TabsList className="mb-4">
+            <TabsTrigger value="assignments">배정 목록</TabsTrigger>
+            <TabsTrigger value="dashboard">현황 대시보드</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <CycleStatusDashboard cycleId={cycleId} />
+          </TabsContent>
+
+          <TabsContent value="assignments">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">전체 평가 현황</CardTitle>
@@ -227,7 +264,7 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
 
             <div className="space-y-2">
               {cycle.assignments?.map((assignment: any) => (
-                <div key={assignment.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div key={assignment.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/30 transition-colors border-b last:border-0">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="font-medium">{assignment.reviewer.name}</span>
                     <span className="text-muted-foreground">→</span>
@@ -246,6 +283,38 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     )}
+                    {cycle.status === "ACTIVE" && assignment.status === "SUBMITTED" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                            <RotateCcw className="h-3 w-3" />
+                            재오픈
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>평가 재오픈</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {assignment.reviewer.name}님의 {assignment.target.name}님에 대한 평가를 재오픈하시겠습니까?
+                              평가자에게 알림이 발송됩니다.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <Input
+                            placeholder="재오픈 사유 (선택)"
+                            value={reopenReason}
+                            onChange={(e) => setReopenReason(e.target.value)}
+                          />
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setReopenReason("")}>취소</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => reopenMutation.mutate({ assignmentId: assignment.id, reason: reopenReason || undefined })}
+                            >
+                              재오픈
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               ))}
@@ -255,6 +324,8 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </RoleGate>
     </div>
   );

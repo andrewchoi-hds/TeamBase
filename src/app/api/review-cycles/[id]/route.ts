@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, forbidden, notFound } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { auditLogService } from "@/lib/services/audit-log.service";
 
 async function handleGET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -52,6 +53,14 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
     },
   });
 
+  await auditLogService.log({
+    action: data.status ? "STATUS_CHANGE" : "UPDATE",
+    entityType: "REVIEW_CYCLE",
+    entityId: params.id,
+    userId: user.id,
+    changes: data,
+  });
+
   return NextResponse.json(cycle);
 }
 
@@ -61,6 +70,14 @@ async function handleDELETE(_req: NextRequest, { params }: { params: { id: strin
   if (user.role !== "ADMIN") return forbidden();
 
   await prisma.reviewCycle.delete({ where: { id: params.id } });
+
+  await auditLogService.log({
+    action: "DELETE",
+    entityType: "REVIEW_CYCLE",
+    entityId: params.id,
+    userId: user.id,
+  });
+
   return NextResponse.json({ message: "삭제되었습니다." });
 }
 

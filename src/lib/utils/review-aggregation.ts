@@ -34,6 +34,7 @@ export interface CriterionScore {
 export interface AggregatedReport {
   targetName: string;
   totalReviews: number;
+  overallAvgScore: number;
   byType: Record<string, { count: number; avgRating: number }>;
   categoryScores: CategoryScore[];
   radarData: { category: string; self: number; peer: number; upward: number; downward: number }[];
@@ -47,6 +48,7 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     return {
       targetName: "",
       totalReviews: 0,
+      overallAvgScore: 0,
       byType: {},
       categoryScores: [],
       radarData: [],
@@ -62,7 +64,13 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     const type = r.assignment.reviewType;
     if (!byType[type]) byType[type] = { ratings: [], count: 0 };
     byType[type].count++;
-    if (r.overallRating != null) byType[type].ratings.push(r.overallRating);
+    if (r.overallRating != null) {
+      byType[type].ratings.push(r.overallRating);
+    } else if (r.responses.length > 0) {
+      // overallRating이 없으면 개별 응답 평균 사용
+      const avg = r.responses.reduce((sum, resp) => sum + resp.rating, 0) / r.responses.length;
+      byType[type].ratings.push(avg);
+    }
   });
 
   const byTypeResult: Record<string, { count: number; avgRating: number }> = {};
@@ -147,18 +155,40 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   const gapAnalysis = [...criterionScores].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
 
   // Overall average per criterion
-  const allCriterionAvg = criterionScores.map((c) => ({
-    ...c,
-    avgScore: (c.selfScore + c.othersScore) / (c.selfScore && c.othersScore ? 2 : 1),
-  }));
+  const allCriterionAvg = criterionScores.map((c) => {
+    const hasSelf = critMap[c.criterionId].selfRatings.length > 0;
+    const hasOthers = critMap[c.criterionId].othersRatings.length > 0;
+    const divisor = (hasSelf && hasOthers) ? 2 : 1;
+    return {
+      ...c,
+      avgScore: (c.selfScore + c.othersScore) / divisor,
+    };
+  });
 
   const sorted = [...allCriterionAvg].sort((a, b) => b.avgScore - a.avgScore);
   const strengths = sorted.slice(0, 3);
   const weaknesses = sorted.slice(-3).reverse();
 
+  // 전체 평균 점수 계산 (overallRating 우선, 없으면 개별 응답 평균으로 폴백)
+  const overallRatings = reviews
+    .filter((r) => r.overallRating != null)
+    .map((r) => r.overallRating as number);
+
+  let overallAvgScore: number;
+  if (overallRatings.length > 0) {
+    overallAvgScore = overallRatings.reduce((a, b) => a + b, 0) / overallRatings.length;
+  } else {
+    // overallRating이 없으면 모든 개별 응답 rating의 평균 사용
+    const allResponseRatings = reviews.flatMap((r) => r.responses.map((resp) => resp.rating));
+    overallAvgScore = allResponseRatings.length > 0
+      ? allResponseRatings.reduce((a, b) => a + b, 0) / allResponseRatings.length
+      : 0;
+  }
+
   return {
     targetName: "",
     totalReviews: reviews.length,
+    overallAvgScore,
     byType: byTypeResult,
     categoryScores,
     radarData,

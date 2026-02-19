@@ -1,7 +1,50 @@
 import prisma from "@/lib/prisma";
 import { notificationService } from "./notification.service";
+import { auditLogService } from "./audit-log.service";
 
 export const reminderService = {
+  /**
+   * 만료된 ACTIVE 사이클을 자동 종료
+   * endDate < now인 사이클을 COMPLETED로 전환, 미제출 배정을 CANCELLED로 처리
+   */
+  async autoCloseExpiredCycles() {
+    const now = new Date();
+
+    const expiredCycles = await prisma.reviewCycle.findMany({
+      where: { status: "ACTIVE", endDate: { lt: now } },
+      select: { id: true, name: true },
+    });
+
+    let count = 0;
+    for (const cycle of expiredCycles) {
+      await prisma.$transaction(async (tx) => {
+        await tx.reviewCycle.update({
+          where: { id: cycle.id },
+          data: { status: "COMPLETED" },
+        });
+
+        await tx.reviewAssignment.updateMany({
+          where: {
+            cycleId: cycle.id,
+            status: { in: ["PENDING", "IN_PROGRESS"] },
+          },
+          data: { status: "CANCELLED" },
+        });
+      });
+
+      await auditLogService.log({
+        action: "AUTO_CLOSE",
+        entityType: "REVIEW_CYCLE",
+        entityId: cycle.id,
+        userId: null,
+        metadata: { cycleName: cycle.name, closedAt: now.toISOString() },
+      });
+
+      count++;
+    }
+    return count;
+  },
+
   /**
    * 평가 마감 임박 알림 (endDate 3일/1일 전, ACTIVE 사이클)
    */

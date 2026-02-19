@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { ReviewCycleStatus, ReviewType } from "@prisma/client";
 import { notificationService } from "./notification.service";
+import { auditLogService } from "./audit-log.service";
 
 export const reviewService = {
   async createCycle(data: {
@@ -13,7 +14,7 @@ export const reviewService = {
     return prisma.reviewCycle.create({ data });
   },
 
-  async updateCycleStatus(id: string, status: ReviewCycleStatus) {
+  async updateCycleStatus(id: string, status: ReviewCycleStatus, userId?: string) {
     const cycle = await prisma.reviewCycle.update({
       where: { id },
       data: { status },
@@ -30,6 +31,14 @@ export const reviewService = {
       }));
       await notificationService.createMany(notifications);
     }
+
+    await auditLogService.log({
+      action: "STATUS_CHANGE",
+      entityType: "REVIEW_CYCLE",
+      entityId: id,
+      userId: userId ?? null,
+      changes: { status },
+    });
 
     return cycle;
   },
@@ -57,10 +66,19 @@ export const reviewService = {
     });
   },
 
-  async submitReview(reviewId: string) {
+  async submitReview(reviewId: string, userId?: string) {
+    // 개별 응답 점수의 평균으로 overallRating 자동 계산
+    const responses = await prisma.reviewResponse.findMany({
+      where: { reviewId },
+      select: { rating: true },
+    });
+    const overallRating = responses.length > 0
+      ? parseFloat((responses.reduce((sum, r) => sum + r.rating, 0) / responses.length).toFixed(2))
+      : null;
+
     const review = await prisma.review.update({
       where: { id: reviewId },
-      data: { status: "SUBMITTED" },
+      data: { status: "SUBMITTED", overallRating },
       include: { target: true, author: true, cycle: true },
     });
 
@@ -77,7 +95,64 @@ export const reviewService = {
       link: `/reviews/${review.cycleId}/results/${review.targetId}`,
     });
 
+    await auditLogService.log({
+      action: "SUBMIT",
+      entityType: "REVIEW",
+      entityId: reviewId,
+      userId: userId ?? review.authorId,
+      changes: { status: "SUBMITTED" },
+    });
+
     return review;
+  },
+
+  async reopenAssignment(assignmentId: string, userId: string, reason?: string) {
+    const assignment = await prisma.reviewAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        cycle: true,
+        review: true,
+        reviewer: { select: { id: true, name: true, email: true } },
+        target: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!assignment) throw new Error("배정을 찾을 수 없습니다.");
+    if (assignment.status !== "SUBMITTED") throw new Error("제출된 평가만 재오픈할 수 있습니다.");
+    if (assignment.cycle.status !== "ACTIVE") throw new Error("활성 상태의 평가 주기만 재오픈 가능합니다.");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.reviewAssignment.update({
+        where: { id: assignmentId },
+        data: { status: "IN_PROGRESS" },
+      });
+
+      if (assignment.review) {
+        await tx.review.update({
+          where: { id: assignment.review.id },
+          data: { status: "DRAFT" },
+        });
+      }
+    });
+
+    await auditLogService.log({
+      action: "REOPEN",
+      entityType: "REVIEW_ASSIGNMENT",
+      entityId: assignmentId,
+      userId,
+      changes: { status: "IN_PROGRESS", reason },
+      metadata: { reviewerId: assignment.reviewerId, targetId: assignment.targetId },
+    });
+
+    await notificationService.create({
+      userId: assignment.reviewerId,
+      type: "REVIEW_REOPENED",
+      title: "평가가 재오픈되었습니다",
+      message: `"${assignment.cycle.name}" 평가 주기에서 ${assignment.target.name}님에 대한 평가가 재오픈되었습니다.${reason ? ` 사유: ${reason}` : ""}`,
+      link: `/reviews/${assignment.cycleId}`,
+    });
+
+    return assignment;
   },
 
   async getReviewResults(cycleId: string, targetId: string) {

@@ -57,6 +57,7 @@ model User {
   notifications    Notification[]
   accessLogsViewer AccessLog[] @relation("AccessLogViewer")
   accessLogsTarget AccessLog[] @relation("AccessLogTarget")
+  auditLogs        AuditLog[]
 
   @@index([departmentId])
   @@index([managerId])
@@ -498,6 +499,7 @@ enum NotificationType {
   REVIEW_SUBMITTED
   REVIEW_CYCLE_STARTED
   REVIEW_CYCLE_ENDING
+  REVIEW_REOPENED
   FEEDBACK_RECEIVED
   MEETING_SCHEDULED
   MEETING_REMINDER
@@ -547,5 +549,43 @@ model AccessLog {
 
   @@index([viewerId])
   @@index([targetId])
+  @@index([createdAt])
+}
+
+// ============================================
+// Audit Log
+// ============================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SUBMIT
+  REOPEN
+  STATUS_CHANGE
+  AUTO_CLOSE
+}
+
+enum AuditEntityType {
+  REVIEW
+  REVIEW_ASSIGNMENT
+  REVIEW_CYCLE
+  REVIEW_TEMPLATE
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String
+  userId     String?
+  changes    Json?
+  metadata   Json?
+  createdAt  DateTime        @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
   @@index([createdAt])
 }
