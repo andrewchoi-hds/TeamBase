@@ -50,23 +50,26 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function FeedbackPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const isReady = sessionStatus === "authenticated";
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
   const { data: received, isLoading: loadingReceived } = useQuery({
     queryKey: ["feedback", "received"],
     queryFn: () => api.get<any[]>("/feedback/identified?type=received"),
+    enabled: isReady,
   });
 
   const { data: anonymous, isLoading: loadingAnonymous } = useQuery({
     queryKey: ["feedback", "anonymous"],
     queryFn: () => api.get<any>(`/feedback/anonymous/${session?.user?.id}`),
-    enabled: !!session?.user?.id,
+    enabled: isReady && !!session?.user?.id,
   });
 
   const { data: sent, isLoading: loadingSent } = useQuery({
     queryKey: ["feedback", "sent"],
     queryFn: () => api.get<any[]>("/feedback/identified?type=given"),
+    enabled: isReady,
   });
 
   return (

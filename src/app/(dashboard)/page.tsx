@@ -14,25 +14,26 @@ import Link from "next/link";
 import { QuickFeedback } from "@/components/dashboard/quick-feedback";
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const user = session?.user;
+  const isReady = sessionStatus === "authenticated";
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-personal"],
     queryFn: () => api.get<any>("/dashboard/personal"),
-    enabled: !!user,
+    enabled: isReady,
   });
 
   const { data: notifications } = useQuery({
     queryKey: ["recent-notifications"],
     queryFn: () => api.get<any>("/notifications?limit=5"),
-    enabled: !!user,
+    enabled: isReady,
   });
 
   const { data: meetings } = useQuery({
     queryKey: ["upcoming-meetings"],
     queryFn: () => api.get<any[]>("/meetings"),
-    enabled: !!user,
+    enabled: isReady,
   });
 
   // Manager/Admin: also fetch team stats
@@ -40,10 +41,10 @@ export default function DashboardPage() {
   const { data: teamStats } = useQuery({
     queryKey: ["dashboard-team"],
     queryFn: () => api.get<any>("/dashboard/team"),
-    enabled: !!user && isManagerOrAdmin,
+    enabled: isReady && isManagerOrAdmin,
   });
 
-  if (statsLoading) return <LoadingState rows={4} />;
+  if (!isReady || statsLoading) return <LoadingState rows={4} variant="cards" />;
 
   const recentNotifications = notifications?.notifications ?? [];
   const upcomingMeetings = (meetings ?? [])
@@ -111,8 +112,8 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {recentNotifications.map((n: any) => (
                   <Link key={n.id} href={n.link ?? "/notifications"}>
-                    <div className="flex items-start gap-3 p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.isRead ? "bg-muted" : "bg-primary"}`} />
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${n.isRead ? "bg-muted-foreground/30" : "bg-primary"}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{n.title}</p>
                         <p className="text-xs text-muted-foreground truncate">{n.message}</p>
@@ -135,7 +136,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {upcomingMeetings.map((m: any) => (
                   <Link key={m.id} href={`/meetings/${m.id}`}>
-                    <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
+                    <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                       <div>
                         <p className="text-sm font-medium">{m.title}</p>
                         <p className="text-xs text-muted-foreground">

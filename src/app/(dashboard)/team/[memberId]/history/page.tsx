@@ -61,13 +61,19 @@ export default function MemberHistoryPage({ params }: { params: { memberId: stri
                 </div>
               </CardHeader>
               <CardContent>
-                {review.overallRating && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm text-muted-foreground">종합 점수:</span>
-                    <span className="font-bold text-lg">{review.overallRating.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">/ 5.0</span>
-                  </div>
-                )}
+                {(() => {
+                  const score = review.overallRating
+                    ?? (review.responses?.length > 0
+                      ? review.responses.reduce((sum: number, r: any) => sum + r.rating, 0) / review.responses.length
+                      : null);
+                  return score != null ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-muted-foreground">종합 점수:</span>
+                      <span className="font-bold text-lg">{score.toFixed(1)}</span>
+                      <span className="text-sm text-muted-foreground">/ 5.0</span>
+                    </div>
+                  ) : null;
+                })()}
                 {review.overallComment && (
                   <p className="text-sm text-muted-foreground">{review.overallComment}</p>
                 )}

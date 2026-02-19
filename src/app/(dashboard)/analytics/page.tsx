@@ -16,16 +16,17 @@ interface TrendData {
 }
 
 export default function AnalyticsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const isReady = sessionStatus === "authenticated";
   const isManagerOrAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
 
   const { data: trends, isLoading } = useQuery({
     queryKey: ["dashboard-trends"],
     queryFn: () => api.get<TrendData>("/dashboard/trends"),
-    enabled: !!session?.user,
+    enabled: isReady,
   });
 
-  if (isLoading) return <LoadingState rows={4} />;
+  if (!isReady || isLoading) return <LoadingState rows={4} />;
 
   return (
     <div>

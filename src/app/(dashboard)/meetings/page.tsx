@@ -15,13 +15,14 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
 export default function MeetingsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { data: meetings, isLoading } = useQuery({
     queryKey: ["meetings"],
     queryFn: () => api.get<any[]>("/meetings"),
+    enabled: sessionStatus === "authenticated",
   });
 
-  if (isLoading) return <LoadingState rows={4} />;
+  if (sessionStatus === "loading" || isLoading) return <LoadingState rows={4} />;
 
   const upcoming = meetings?.filter((m: any) => new Date(m.scheduledAt) >= new Date()) ?? [];
   const past = meetings?.filter((m: any) => new Date(m.scheduledAt) < new Date()) ?? [];
