@@ -101,7 +101,7 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
 
         {status === "submitted" && (
           <Card><CardContent className="py-12 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
             <p className="mt-4 font-semibold">피드백이 제출되었습니다</p>
             <p className="mt-1 text-sm text-muted-foreground">소중한 의견 감사합니다. 이 페이지를 닫으셔도 됩니다.</p>
           </CardContent></Card>

@@ -39,7 +39,7 @@ export function Header() {
     .slice(0, 2) ?? "?";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card/80 backdrop-blur-sm px-4 md:px-6">
       <Button
         variant="ghost"
         size="icon"

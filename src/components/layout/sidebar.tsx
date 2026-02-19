@@ -57,9 +57,11 @@ function useNavItems() {
   return navItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
 }
 
-function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+function SidebarNav({ collapsed, onNavigate, variant = "desktop" }: { collapsed: boolean; onNavigate?: () => void; variant?: "desktop" | "mobile" }) {
   const pathname = usePathname();
   const filteredItems = useNavItems();
+
+  const isDark = variant === "desktop";
 
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -72,10 +74,14 @@ function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              isDark
+                ? isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-white/10"
+                : isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               collapsed && "justify-center px-2"
             )}
           >
@@ -84,14 +90,14 @@ function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
               <>
                 <span className="flex-1">{item.title}</span>
                 {item.badge ? (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive text-[11px] text-destructive-foreground px-1" aria-label={`${item.badge}개의 알림`}>
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 text-[11px] text-white font-semibold px-1" aria-label={`${item.badge}개의 알림`}>
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 ) : null}
               </>
             )}
             {collapsed && item.badge ? (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground px-0.5" aria-label={`${item.badge}개의 알림`}>
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] text-white font-semibold px-0.5" aria-label={`${item.badge}개의 알림`}>
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             ) : null}
@@ -122,26 +128,32 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Dark slate background */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col border-r bg-card transition-all duration-300",
+          "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300",
           sidebarCollapsed ? "w-[68px]" : "w-[240px]"
         )}
       >
-        <div className="flex h-16 items-center border-b px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+        <div className="flex h-16 items-center border-b border-sidebar-border px-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white font-bold text-sm shadow-sm">
               TB
             </div>
-            {!sidebarCollapsed && <span className="font-bold text-lg">TeamBase</span>}
+            {!sidebarCollapsed && <span className="font-bold text-lg text-white tracking-tight">TeamBase</span>}
           </Link>
         </div>
 
-        <SidebarNav collapsed={sidebarCollapsed} />
+        <SidebarNav collapsed={sidebarCollapsed} variant="desktop" />
 
-        <div className="border-t p-3">
-          <Button variant="ghost" size="sm" className="w-full justify-center" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}>
+        <div className="border-t border-sidebar-border p-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center text-slate-400 hover:text-white hover:bg-white/10"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          >
             {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
@@ -151,14 +163,14 @@ export function Sidebar() {
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetContent side="left" className="w-[240px] p-0">
           <div className="flex h-16 items-center border-b px-4">
-            <Link href="/" className="flex items-center gap-2" onClick={() => setMobileSidebarOpen(false)}>
+            <Link href="/" className="flex items-center gap-2.5" onClick={() => setMobileSidebarOpen(false)}>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
                 TB
               </div>
-              <span className="font-bold text-lg">TeamBase</span>
+              <span className="font-bold text-lg tracking-tight">TeamBase</span>
             </Link>
           </div>
-          <SidebarNav collapsed={false} onNavigate={() => setMobileSidebarOpen(false)} />
+          <SidebarNav collapsed={false} onNavigate={() => setMobileSidebarOpen(false)} variant="mobile" />
         </SheetContent>
       </Sheet>
     </TooltipProvider>

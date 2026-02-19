@@ -23,7 +23,7 @@ export default function SystemSettingsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">데이터베이스</span>
-                <Badge variant="outline" className="text-green-600">연결됨</Badge>
+                <Badge variant="outline" className="text-green-600 dark:text-green-400">연결됨</Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">환경</span>
@@ -42,7 +42,7 @@ export default function SystemSettingsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">열람 로그 자동 알림</span>
-                <Badge variant="outline" className="text-green-600">활성</Badge>
+                <Badge variant="outline" className="text-green-600 dark:text-green-400">활성</Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">세션 만료 시간</span>

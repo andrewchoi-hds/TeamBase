@@ -1,11 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    cssChunking: "loose",
-  },
-};
+const nextConfig = {};
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,

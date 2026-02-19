@@ -33,16 +33,23 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                document.documentElement.style.backgroundColor = '#fff';
-                document.documentElement.style.colorScheme = 'light';
+                var theme = localStorage.getItem('theme');
+                var isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.style.colorScheme = 'dark';
+                  document.documentElement.style.backgroundColor = 'hsl(228.6 84% 4.9%)';
+                } else {
+                  document.documentElement.style.colorScheme = 'light';
+                  document.documentElement.style.backgroundColor = 'hsl(210 40% 98%)';
+                }
               })();
             `,
           }}
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ backgroundColor: 'hsl(0 0% 100%)', color: 'hsl(0 0% 3.9%)' }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <Providers>{children}</Providers>
       </body>

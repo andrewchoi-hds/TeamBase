@@ -45,18 +45,23 @@ export function FeedbackTrendChart({ data }: FeedbackTrendChartProps) {
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
             <Tooltip
-              contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+              contentStyle={{
+                borderRadius: "8px",
+                border: "1px solid hsl(var(--border))",
+                backgroundColor: "hsl(var(--card))",
+                color: "hsl(var(--card-foreground))",
+              }}
             />
             <Legend />
             <Area
               type="monotone"
               dataKey="received"
               name="받은 피드백"
-              stroke="#6366f1"
-              fill="#6366f1"
+              stroke="hsl(24.6, 95%, 53.1%)"
+              fill="hsl(24.6, 95%, 53.1%)"
               fillOpacity={0.2}
               strokeWidth={2}
             />
@@ -64,8 +69,8 @@ export function FeedbackTrendChart({ data }: FeedbackTrendChartProps) {
               type="monotone"
               dataKey="sent"
               name="보낸 피드백"
-              stroke="#22c55e"
-              fill="#22c55e"
+              stroke="hsl(199, 89%, 48%)"
+              fill="hsl(199, 89%, 48%)"
               fillOpacity={0.2}
               strokeWidth={2}
             />

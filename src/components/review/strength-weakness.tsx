@@ -17,7 +17,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             강점 (상위 3개)
           </CardTitle>
         </CardHeader>
@@ -28,7 +28,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
               return (
                 <div key={item.criterionId} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-green-600 w-5">{i + 1}</span>
+                    <span className="text-sm font-bold text-green-600 dark:text-green-400 w-5">{i + 1}</span>
                     <div>
                       <p className="text-sm font-medium">{item.criterionName}</p>
                       <p className="text-xs text-muted-foreground">{item.categoryName}</p>
@@ -37,7 +37,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
                   <div className="flex items-center gap-1">
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <div key={n} className={`h-2 w-3 rounded-sm ${n <= Math.round(avg) ? "bg-green-500" : "bg-muted"}`} />
+                        <div key={n} className={`h-2 w-3 rounded-sm ${n <= Math.round(avg) ? "bg-green-500 dark:bg-green-400" : "bg-muted"}`} />
                       ))}
                     </div>
                     <span className="text-sm font-medium ml-1">{avg.toFixed(1)}</span>
@@ -52,7 +52,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-orange-600" />
+            <TrendingDown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             개선 영역 (하위 3개)
           </CardTitle>
         </CardHeader>
@@ -63,7 +63,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
               return (
                 <div key={item.criterionId} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-orange-600 w-5">{i + 1}</span>
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400 w-5">{i + 1}</span>
                     <div>
                       <p className="text-sm font-medium">{item.criterionName}</p>
                       <p className="text-xs text-muted-foreground">{item.categoryName}</p>
@@ -72,7 +72,7 @@ export function StrengthWeakness({ strengths, weaknesses }: StrengthWeaknessProp
                   <div className="flex items-center gap-1">
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <div key={n} className={`h-2 w-3 rounded-sm ${n <= Math.round(avg) ? "bg-orange-400" : "bg-muted"}`} />
+                        <div key={n} className={`h-2 w-3 rounded-sm ${n <= Math.round(avg) ? "bg-orange-400 dark:bg-orange-500" : "bg-muted"}`} />
                       ))}
                     </div>
                     <span className="text-sm font-medium ml-1">{avg.toFixed(1)}</span>

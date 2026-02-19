@@ -336,7 +336,7 @@ export function BulkAssignmentDialog({ cycleId, existingAssignments }: BulkAssig
                 <p className="text-xs text-muted-foreground">전체 생성</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950">
-                <p className="text-2xl font-bold text-green-600">{newAssignments.length}</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{newAssignments.length}</p>
                 <p className="text-xs text-muted-foreground">신규 배정</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/50">

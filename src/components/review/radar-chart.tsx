@@ -24,10 +24,10 @@ interface ReviewRadarChartProps {
 }
 
 const COLORS = {
-  self: "#6366f1",
-  peer: "#22c55e",
-  upward: "#f59e0b",
-  downward: "#ef4444",
+  self: "hsl(24.6, 95%, 53.1%)",    // orange-500 (primary)
+  peer: "hsl(199, 89%, 48%)",        // sky-500
+  upward: "hsl(38, 92%, 50%)",       // amber-500
+  downward: "hsl(346, 77%, 50%)",    // rose-500
 };
 
 const LABELS: Record<string, string> = {
@@ -40,7 +40,6 @@ const LABELS: Record<string, string> = {
 export function ReviewRadarChart({ data }: ReviewRadarChartProps) {
   if (!data.length) return null;
 
-  // 실제 데이터가 있는 타입만 표시
   const activeTypes = Object.entries(COLORS).filter(([key]) =>
     data.some((d) => d[key as keyof RadarChartData] as number > 0)
   );
@@ -53,9 +52,9 @@ export function ReviewRadarChart({ data }: ReviewRadarChartProps) {
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
           <RadarChart data={data}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="category" className="text-xs" />
-            <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} />
+            <PolarGrid stroke="hsl(var(--border))" />
+            <PolarAngleAxis dataKey="category" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+            <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} tick={{ fill: "hsl(var(--muted-foreground))" }} />
             {activeTypes.map(([key, color]) => (
               <Radar
                 key={key}
@@ -63,7 +62,7 @@ export function ReviewRadarChart({ data }: ReviewRadarChartProps) {
                 dataKey={key}
                 stroke={color}
                 fill={color}
-                fillOpacity={0.1}
+                fillOpacity={0.15}
                 strokeWidth={2}
               />
             ))}

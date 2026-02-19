@@ -44,10 +44,15 @@ export function ScoreTrendChart({ data }: ScoreTrendChartProps) {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis dataKey="cycle" className="text-xs" tick={{ fontSize: 12 }} />
-            <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} />
+            <XAxis dataKey="cycle" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
             <Tooltip
-              contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+              contentStyle={{
+                borderRadius: "8px",
+                border: "1px solid hsl(var(--border))",
+                backgroundColor: "hsl(var(--card))",
+                color: "hsl(var(--card-foreground))",
+              }}
               formatter={(value) => [`${Number(value).toFixed(2)}점`, "평균 점수"]}
             />
             <Line

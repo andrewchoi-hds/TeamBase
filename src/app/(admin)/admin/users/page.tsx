@@ -18,9 +18,9 @@ import { ColumnDef } from "@tanstack/react-table";
 
 const roleLabels: Record<string, string> = { ADMIN: "관리자", MANAGER: "팀장", MEMBER: "팀원" };
 const roleBadgeColors: Record<string, string> = {
-  ADMIN: "bg-red-100 text-red-800",
-  MANAGER: "bg-blue-100 text-blue-800",
-  MEMBER: "bg-gray-100 text-gray-800",
+  ADMIN: "bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+  MANAGER: "bg-sky-50 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
+  MEMBER: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 
 const columns: ColumnDef<any>[] = [

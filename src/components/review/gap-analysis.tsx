@@ -49,7 +49,7 @@ export function GapAnalysis({ data }: GapAnalysisProps) {
                     <div
                       className={cn(
                         "h-full rounded-full absolute top-0",
-                        isPositive ? "bg-orange-400 right-1/2" : "bg-blue-400 left-1/2"
+                        isPositive ? "bg-orange-400 dark:bg-orange-500 right-1/2" : "bg-blue-400 dark:bg-blue-500 left-1/2"
                       )}
                       style={{
                         width: `${Math.min(absGap / 5 * 50, 50)}%`,
