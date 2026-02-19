@@ -8,15 +8,15 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { api } from "@/lib/api/client";
+import { StepWizard } from "@/components/common/step-wizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Calendar, FileCheck } from "lucide-react";
+import { ArrowLeft, Calendar, FileCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -29,17 +29,26 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const STEPS = [
+  { title: "기본 정보", description: "이름과 설명" },
+  { title: "기간 설정", description: "분기 또는 수동 날짜" },
+  { title: "템플릿 선택", description: "평가 기준 템플릿" },
+];
+
 export default function NewReviewCyclePage() {
   const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(0);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors }, trigger } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
   const nameValue = watch("name");
+  const startDateValue = watch("startDate");
+  const endDateValue = watch("endDate");
 
   const { data: templates } = useQuery({
     queryKey: ["review-templates"],
@@ -86,7 +95,6 @@ export default function NewReviewCyclePage() {
     setValue("startDate", format(quarter.startDate, "yyyy-MM-dd"));
     setValue("endDate", format(quarter.endDate, "yyyy-MM-dd"));
 
-    // Auto-fill name
     const year = quarter.startDate.getFullYear();
     const autoName = `${year}년 ${quarter.label} 평가`;
     if (!nameValue || nameValue.match(/^\d{4}년.*평가$/)) {
@@ -101,6 +109,32 @@ export default function NewReviewCyclePage() {
   };
 
   const periodLabel = startDate ? getQuarterLabel(startDate) : null;
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 0: return !!nameValue?.trim();
+      case 1: return !!startDateValue && !!endDateValue;
+      case 2: return true; // 템플릿 선택은 선택사항
+      default: return false;
+    }
+  };
+
+  const handleStepChange = async (step: number) => {
+    if (step > currentStep) {
+      // 현재 스텝의 필수 필드를 검증
+      if (currentStep === 0) {
+        const valid = await trigger("name");
+        if (!valid) return;
+      }
+      if (currentStep === 1) {
+        const valid = await trigger(["startDate", "endDate"]);
+        if (!valid) return;
+      }
+    }
+    setCurrentStep(step);
+  };
+
+  const onSubmit = handleSubmit((d) => mutation.mutate(d));
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -118,15 +152,47 @@ export default function NewReviewCyclePage() {
         <p className="text-muted-foreground mt-1">평가 주기를 생성하고 기간 및 템플릿을 설정합니다.</p>
       </div>
 
-      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-8">
-        {/* Section 1: 기간 설정 (먼저!) */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-foreground text-background text-xs font-bold">1</div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider">기간 설정</h2>
-          </div>
+      <StepWizard
+        steps={STEPS}
+        currentStep={currentStep}
+        onStepChange={handleStepChange}
+        onSubmit={onSubmit}
+        submitLabel="평가 주기 생성"
+        isSubmitting={mutation.isPending}
+        canProceed={canProceed()}
+      >
+        {/* Step 1: 기본 정보 */}
+        {currentStep === 0 && (
+          <section className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cycle-name" className="text-sm font-medium">
+                이름 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="cycle-name"
+                placeholder="예: 2026년 1분기 평가"
+                className="h-11"
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cycle-description" className="text-sm font-medium">설명</Label>
+              <Textarea
+                id="cycle-description"
+                placeholder="이 평가 주기의 목적, 참여 대상, 특이사항 등을 기재하세요."
+                className="min-h-[100px] resize-none"
+                {...register("description")}
+              />
+            </div>
+          </section>
+        )}
 
-          <div className="pl-8 space-y-4">
+        {/* Step 2: 기간 설정 */}
+        {currentStep === 1 && (
+          <section className="space-y-4">
             {/* Quarter picker */}
             <div className="p-4 rounded-lg border border-border bg-muted/30">
               <p className="text-xs font-medium text-muted-foreground mb-3">분기를 선택하면 이름과 기간이 자동 설정됩니다</p>
@@ -140,7 +206,7 @@ export default function NewReviewCyclePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cycle-start-date" className="text-sm font-medium">
-                  시작일 <span className="text-muted-foreground font-normal">*</span>
+                  시작일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-start-date"
@@ -155,7 +221,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cycle-end-date" className="text-sm font-medium">
-                  종료일 <span className="text-muted-foreground font-normal">*</span>
+                  종료일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-end-date"
@@ -184,67 +250,23 @@ export default function NewReviewCyclePage() {
                 </span>
               </div>
             )}
-          </div>
-        </section>
+          </section>
+        )}
 
-        <Separator />
-
-        {/* Section 2: 기본 정보 */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-foreground text-background text-xs font-bold">2</div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider">기본 정보</h2>
-          </div>
-
-          <div className="space-y-4 pl-8">
-            <div className="space-y-2">
-              <Label htmlFor="cycle-name" className="text-sm font-medium">
-                이름 <span className="text-muted-foreground font-normal">*</span>
-              </Label>
-              <Input
-                id="cycle-name"
-                placeholder="예: 2026년 1분기 평가"
-                className="h-11"
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cycle-description" className="text-sm font-medium">설명</Label>
-              <Textarea
-                id="cycle-description"
-                placeholder="이 평가 주기의 목적, 참여 대상, 특이사항 등을 기재하세요."
-                className="min-h-[100px] resize-none"
-                {...register("description")}
-              />
-            </div>
-          </div>
-        </section>
-
-        <Separator />
-
-        {/* Section 3: 템플릿 */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-foreground text-background text-xs font-bold">3</div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider">평가 템플릿</h2>
-          </div>
-
-          <div className="pl-8 space-y-3">
+        {/* Step 3: 템플릿 선택 */}
+        {currentStep === 2 && (
+          <section className="space-y-3">
             {templates && templates.length > 0 ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  평가 기준이 사전 정의된 템플릿을 선택하세요. 나중에 변경할 수 있습니다.
+                  평가 기준이 사전 정의된 템플릿을 선택하세요. 선택하지 않아도 됩니다.
                 </p>
                 <div className="grid grid-cols-1 gap-2">
                   {templates.map((t: any) => (
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setValue("templateId", t.id)}
+                      onClick={() => setValue("templateId", watch("templateId") === t.id ? "" : t.id)}
                       className={cn(
                         "flex items-start gap-3 p-4 rounded-lg border text-left transition-all duration-150",
                         "hover:border-foreground/30",
@@ -278,30 +300,9 @@ export default function NewReviewCyclePage() {
                 <p className="text-xs text-muted-foreground mt-1">템플릿 없이도 평가 주기를 생성할 수 있습니다</p>
               </div>
             )}
-          </div>
-        </section>
-
-        <Separator />
-
-        {/* Actions */}
-        <div className="flex items-center gap-3 pl-8">
-          <Button
-            type="submit"
-            disabled={mutation.isPending}
-            className="px-8"
-          >
-            {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            평가 주기 생성
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => router.back()}
-          >
-            취소
-          </Button>
-        </div>
-      </form>
+          </section>
+        )}
+      </StepWizard>
     </div>
   );
 }

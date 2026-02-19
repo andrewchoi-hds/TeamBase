@@ -69,6 +69,8 @@ export default withAuth(
         if (pathname.startsWith("/feedback/anonymous/")) return true;
         if (pathname.startsWith("/api/feedback/anonymous/submit")) return true;
         if (pathname.startsWith("/api/feedback/anonymous/validate-token")) return true;
+        // Cron 엔드포인트 (CRON_SECRET으로 자체 인증)
+        if (pathname.startsWith("/api/cron/")) return true;
         return !!token;
       },
     },
@@ -82,6 +84,7 @@ export const config = {
     "/feedback/:path*",
     "/objectives/:path*",
     "/meetings/:path*",
+    "/analytics/:path*",
     "/team/:path*",
     "/notifications/:path*",
     "/admin/:path*",

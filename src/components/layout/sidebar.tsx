@@ -17,6 +17,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -47,6 +48,7 @@ function useNavItems() {
     { title: "피드백", href: "/feedback", icon: <MessageSquare className="h-5 w-5" /> },
     { title: "목표(OKR)", href: "/objectives", icon: <Target className="h-5 w-5" /> },
     { title: "1:1 미팅", href: "/meetings", icon: <Calendar className="h-5 w-5" /> },
+    { title: "분석", href: "/analytics", icon: <BarChart3 className="h-5 w-5" /> },
     { title: "팀 관리", href: "/team", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "MANAGER"] },
     { title: "알림", href: "/notifications", icon: <Bell className="h-5 w-5" />, badge: unreadCount },
     { title: "관리자", href: "/admin", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN"] },

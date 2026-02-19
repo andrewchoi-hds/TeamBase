@@ -88,3 +88,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for PDF export */
+@media print {
+  /* 사이드바, 헤더, 네비게이션 숨기기 */
+  aside,
+  nav,
+  header,
+  [data-sidebar],
+  .no-print {
+    display: none !important;
+  }
+
+  /* 메인 콘텐츠 전체 너비 */
+  main,
+  [data-main-content] {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 배경색 인쇄 허용 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 카드 그림자 제거 */
+  .shadow-sm,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+
+  /* 페이지 여백 */
+  @page {
+    margin: 1cm;
+  }
+}

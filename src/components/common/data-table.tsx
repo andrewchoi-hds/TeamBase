@@ -2,6 +2,7 @@
 
 import {
   ColumnDef,
+  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { DataTableFilters, FilterConfig } from "./data-table-filters";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -29,6 +31,7 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string;
   searchPlaceholder?: string;
   pageSize?: number;
+  filters?: FilterConfig[];
 }
 
 export function DataTable<TData, TValue>({
@@ -37,9 +40,12 @@ export function DataTable<TData, TValue>({
   searchKey,
   searchPlaceholder = "검색...",
   pageSize = 10,
+  filters,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
   const table = useReactTable({
     data,
@@ -50,23 +56,58 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    state: { sorting, globalFilter },
+    onColumnFiltersChange: setColumnFilters,
+    state: { sorting, globalFilter, columnFilters },
     initialState: { pagination: { pageSize } },
   });
 
+  const handleFilterChange = (key: string, value: string | undefined) => {
+    setFilterValues((prev) => {
+      const next = { ...prev };
+      if (value) {
+        next[key] = value;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+    setColumnFilters((prev) => {
+      const filtered = prev.filter((f) => f.id !== key);
+      if (value) {
+        filtered.push({ id: key, value });
+      }
+      return filtered;
+    });
+  };
+
+  const handleFilterReset = () => {
+    setFilterValues({});
+    setColumnFilters([]);
+  };
+
   return (
     <div className="space-y-4">
-      {searchKey && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
+      <div className="flex items-center gap-3 flex-wrap">
+        {searchKey && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+        {filters && (
+          <DataTableFilters
+            filters={filters}
+            values={filterValues}
+            onChange={handleFilterChange}
+            onReset={handleFilterReset}
           />
-        </div>
-      )}
+        )}
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>

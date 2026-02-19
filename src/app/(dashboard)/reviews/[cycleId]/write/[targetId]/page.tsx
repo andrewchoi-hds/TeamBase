@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function RatingScale({ value, onChange, label }: { value: number; onChange: (v: number) => void; label?: string }) {
+function RatingScale({ value, onChange, label, hasError }: { value: number; onChange: (v: number) => void; label?: string; hasError?: boolean }) {
   return (
     <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
       {[1, 2, 3, 4, 5].map((n) => (
@@ -30,7 +30,8 @@ function RatingScale({ value, onChange, label }: { value: number; onChange: (v: 
             "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
             n <= value
               ? "bg-primary text-primary-foreground border-primary"
-              : "hover:bg-accent"
+              : "hover:bg-accent",
+            hasError && value === 0 && "border-destructive"
           )}
         >
           {n}
@@ -44,6 +45,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
   const { cycleId, targetId } = params;
   const router = useRouter();
   const { saveDraft, getDraft, removeDraft } = useReviewStore();
+  const criterionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
@@ -57,6 +59,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
   const [responses, setResponses] = useState<Record<string, { rating: number; comment: string }>>({});
   const [overallComment, setOverallComment] = useState("");
   const [reviewId, setReviewId] = useState<string | null>(null);
+  const [invalidCriteria, setInvalidCriteria] = useState<Set<string>>(new Set());
 
   // Load draft
   useEffect(() => {
@@ -85,7 +88,6 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
         return api.patch(`/reviews/${reviewId}`, { overallComment, responses: responseArray });
       }
 
-      // Create new review via assignment
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,8 +110,42 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // 별점 필수 검증
+  const validateRatings = useCallback((): boolean => {
+    const categories = cycle?.template?.categories ?? [];
+    const missing: string[] = [];
+
+    for (const category of categories) {
+      for (const criterion of category.criteria) {
+        const rating = responses[criterion.id]?.rating ?? 0;
+        if (rating === 0) {
+          missing.push(criterion.id);
+        }
+      }
+    }
+
+    if (missing.length > 0) {
+      setInvalidCriteria(new Set(missing));
+      toast.error(`${missing.length}개 항목의 평가 점수를 선택해주세요.`);
+      // 첫 번째 미선택 항목으로 스크롤
+      const firstMissing = missing[0];
+      const el = criterionRefs.current[firstMissing];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return false;
+    }
+
+    setInvalidCriteria(new Set());
+    return true;
+  }, [cycle, responses]);
+
   const submitMutation = useMutation({
     mutationFn: async () => {
+      if (!validateRatings()) {
+        throw new Error("모든 평가 항목의 점수를 선택해주세요.");
+      }
+
       if (!reviewId) {
         await saveMutation.mutateAsync();
       }
@@ -122,7 +158,11 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
       toast.success("평가가 제출되었습니다.");
       router.push(`/reviews/${cycleId}`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      if (e.message !== "모든 평가 항목의 점수를 선택해주세요.") {
+        toast.error(e.message);
+      }
+    },
   });
 
   if (isLoading) return <LoadingState rows={5} />;
@@ -144,39 +184,58 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
               <CardTitle className="text-lg">{category.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {category.criteria.map((criterion: any) => (
-                <div key={criterion.id} className="space-y-3">
-                  <div>
-                    <Label className="text-sm font-medium">{criterion.name}</Label>
-                    {criterion.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
+              {category.criteria.map((criterion: any) => {
+                const hasError = invalidCriteria.has(criterion.id);
+                return (
+                  <div
+                    key={criterion.id}
+                    ref={(el) => { criterionRefs.current[criterion.id] = el; }}
+                    className={cn(
+                      "space-y-3 p-3 -mx-3 rounded-lg transition-colors",
+                      hasError && "bg-destructive/5 ring-1 ring-destructive/20"
                     )}
+                  >
+                    <div>
+                      <Label className="text-sm font-medium">{criterion.name}</Label>
+                      {criterion.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
+                      )}
+                      {hasError && (
+                        <p className="text-xs text-destructive mt-1">점수를 선택해주세요</p>
+                      )}
+                    </div>
+                    <RatingScale
+                      label={`${criterion.name} 평가 점수`}
+                      value={responses[criterion.id]?.rating ?? 0}
+                      hasError={hasError}
+                      onChange={(rating) => {
+                        setResponses((prev) => ({
+                          ...prev,
+                          [criterion.id]: { ...prev[criterion.id], rating, comment: prev[criterion.id]?.comment ?? "" },
+                        }));
+                        setInvalidCriteria((prev) => {
+                          const next = new Set(prev);
+                          next.delete(criterion.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <Textarea
+                      id={`comment-${criterion.id}`}
+                      aria-label={`${criterion.name} 코멘트`}
+                      placeholder="코멘트 (선택)"
+                      value={responses[criterion.id]?.comment ?? ""}
+                      onChange={(e) =>
+                        setResponses((prev) => ({
+                          ...prev,
+                          [criterion.id]: { ...prev[criterion.id], rating: prev[criterion.id]?.rating ?? 0, comment: e.target.value },
+                        }))
+                      }
+                      rows={2}
+                    />
                   </div>
-                  <RatingScale
-                    label={`${criterion.name} 평가 점수`}
-                    value={responses[criterion.id]?.rating ?? 0}
-                    onChange={(rating) =>
-                      setResponses((prev) => ({
-                        ...prev,
-                        [criterion.id]: { ...prev[criterion.id], rating, comment: prev[criterion.id]?.comment ?? "" },
-                      }))
-                    }
-                  />
-                  <Textarea
-                    id={`comment-${criterion.id}`}
-                    aria-label={`${criterion.name} 코멘트`}
-                    placeholder="코멘트 (선택)"
-                    value={responses[criterion.id]?.comment ?? ""}
-                    onChange={(e) =>
-                      setResponses((prev) => ({
-                        ...prev,
-                        [criterion.id]: { ...prev[criterion.id], rating: prev[criterion.id]?.rating ?? 0, comment: e.target.value },
-                      }))
-                    }
-                    rows={2}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         ))}

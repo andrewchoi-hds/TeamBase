@@ -49,4 +49,22 @@ export const notificationService = {
       data: { isRead: true },
     });
   },
+
+  /** 같은 날 동일 (userId, type, link) 알림이 있는지 확인 (중복 방지) */
+  async existsToday(userId: string, type: NotificationType, link?: string): Promise<boolean> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const count = await prisma.notification.count({
+      where: {
+        userId,
+        type,
+        ...(link ? { link } : {}),
+        createdAt: { gte: startOfDay, lte: endOfDay },
+      },
+    });
+    return count > 0;
+  },
 };

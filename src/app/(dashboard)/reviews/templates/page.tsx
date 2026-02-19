@@ -6,49 +6,96 @@ import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { TemplateEditor, TemplateCategory } from "@/components/review/template-editor";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, FileText, X, Loader2 } from "lucide-react";
+import { Plus, FileText, MoreVertical, Pencil, Copy, Trash2 } from "lucide-react";
 
 export default function ReviewTemplatesPage() {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [categories, setCategories] = useState([{ name: "", criteria: [{ name: "", description: "" }] }]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<any>(null);
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["review-templates"],
     queryFn: () => api.get<any[]>("/review-templates"),
   });
 
-  const mutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: (data: any) => api.post("/review-templates", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["review-templates"] });
       toast.success("템플릿이 생성되었습니다.");
-      setOpen(false);
-      setName("");
-      setCategories([{ name: "", criteria: [{ name: "", description: "" }] }]);
+      setCreateOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const addCategory = () => setCategories([...categories, { name: "", criteria: [{ name: "", description: "" }] }]);
-  const removeCategory = (i: number) => setCategories(categories.filter((_, idx) => idx !== i));
-  const addCriterion = (catIdx: number) => {
-    const updated = [...categories];
-    updated[catIdx].criteria.push({ name: "", description: "" });
-    setCategories(updated);
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/review-templates/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-templates"] });
+      toast.success("템플릿이 수정되었습니다.");
+      setEditOpen(false);
+      setEditTarget(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/review-templates/${id}/duplicate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-templates"] });
+      toast.success("템플릿이 복제되었습니다.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/review-templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-templates"] });
+      toast.success("템플릿이 삭제되었습니다.");
+      setDeleteId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const handleEdit = (template: any) => {
+    setEditTarget(template);
+    setEditOpen(true);
   };
 
   return (
     <div>
       <PageHeader title="평가 템플릿" description="평가 항목 템플릿을 관리합니다.">
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />새 템플릿</Button>
           </DialogTrigger>
@@ -56,36 +103,11 @@ export default function ReviewTemplatesPage() {
             <DialogHeader>
               <DialogTitle>새 평가 템플릿</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>템플릿 이름</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 분기별 역량 평가" />
-              </div>
-              {categories.map((cat, ci) => (
-                <Card key={ci}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <Input value={cat.name} onChange={(e) => { const u = [...categories]; u[ci].name = e.target.value; setCategories(u); }} placeholder="카테고리명 (예: 업무 역량)" className="font-medium" />
-                      {categories.length > 1 && <Button variant="ghost" size="icon" onClick={() => removeCategory(ci)}><X className="h-4 w-4" /></Button>}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {cat.criteria.map((c, cri) => (
-                      <div key={cri} className="flex gap-2">
-                        <Input value={c.name} onChange={(e) => { const u = [...categories]; u[ci].criteria[cri].name = e.target.value; setCategories(u); }} placeholder="평가 항목명" className="flex-1" />
-                        <Input value={c.description} onChange={(e) => { const u = [...categories]; u[ci].criteria[cri].description = e.target.value; setCategories(u); }} placeholder="설명 (선택)" className="flex-1" />
-                        {cat.criteria.length > 1 && <Button variant="ghost" size="icon" onClick={() => { const u = [...categories]; u[ci].criteria = u[ci].criteria.filter((_, i) => i !== cri); setCategories(u); }}><X className="h-4 w-4" /></Button>}
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => addCriterion(ci)}><Plus className="mr-1 h-3 w-3" />항목 추가</Button>
-                  </CardContent>
-                </Card>
-              ))}
-              <Button variant="outline" onClick={addCategory}><Plus className="mr-2 h-4 w-4" />카테고리 추가</Button>
-              <Button className="w-full" onClick={() => mutation.mutate({ name, categories })} disabled={mutation.isPending || !name}>
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}생성
-              </Button>
-            </div>
+            <TemplateEditor
+              onSubmit={(data) => createMutation.mutate(data)}
+              isSubmitting={createMutation.isPending}
+              submitLabel="생성"
+            />
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -96,8 +118,26 @@ export default function ReviewTemplatesPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((t: any) => (
             <Card key={t.id}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <CardTitle className="text-lg">{t.name}</CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEdit(t)}>
+                      <Pencil className="mr-2 h-4 w-4" />수정
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => duplicateMutation.mutate(t.id)}>
+                      <Copy className="mr-2 h-4 w-4" />복제
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(t.id)}>
+                      <Trash2 className="mr-2 h-4 w-4" />삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardHeader>
               <CardContent>
                 {t.categories?.map((cat: any) => (
@@ -113,6 +153,48 @@ export default function ReviewTemplatesPage() {
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditTarget(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>템플릿 수정</DialogTitle>
+          </DialogHeader>
+          {editTarget && (
+            <TemplateEditor
+              initialName={editTarget.name}
+              initialCategories={editTarget.categories?.map((cat: any) => ({
+                name: cat.name,
+                criteria: cat.criteria?.map((c: any) => ({ name: c.name, description: c.description ?? "" })) ?? [],
+              }))}
+              onSubmit={(data) => editMutation.mutate({ id: editTarget.id, data })}
+              isSubmitting={editMutation.isPending}
+              submitLabel="수정"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>템플릿 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -9,18 +10,43 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { LoadingState } from "@/components/common/loading-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { RoleGate } from "@/components/common/role-gate";
+import { DataTableFilters, FilterConfig } from "@/components/common/data-table-filters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, ClipboardCheck, Calendar, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
+const STATUS_FILTERS: FilterConfig[] = [
+  {
+    key: "status",
+    label: "상태",
+    type: "select",
+    options: [
+      { value: "DRAFT", label: "초안" },
+      { value: "ACTIVE", label: "진행중" },
+      { value: "COMPLETED", label: "완료" },
+      { value: "CANCELLED", label: "취소됨" },
+    ],
+  },
+];
+
 export default function ReviewsPage() {
   const { data: _session } = useSession();
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
   const { data: cycles, isLoading } = useQuery({
     queryKey: ["review-cycles"],
     queryFn: () => api.get<any[]>("/review-cycles"),
   });
+
+  const filteredCycles = useMemo(() => {
+    if (!cycles) return [];
+    return cycles.filter((cycle: any) => {
+      if (filterValues.status && cycle.status !== filterValues.status) return false;
+      return true;
+    });
+  }, [cycles, filterValues]);
 
   if (isLoading) return <LoadingState rows={4} />;
 
@@ -37,7 +63,24 @@ export default function ReviewsPage() {
         </RoleGate>
       </PageHeader>
 
-      {!cycles?.length ? (
+      {/* Filters */}
+      {cycles && cycles.length > 0 && (
+        <div className="mb-4">
+          <DataTableFilters
+            filters={STATUS_FILTERS}
+            values={filterValues}
+            onChange={(key, value) => setFilterValues((prev) => {
+              const next = { ...prev };
+              if (value) next[key] = value;
+              else delete next[key];
+              return next;
+            })}
+            onReset={() => setFilterValues({})}
+          />
+        </div>
+      )}
+
+      {!filteredCycles?.length ? (
         <EmptyState
           icon={<ClipboardCheck className="h-12 w-12" />}
           title="평가 주기가 없습니다"
@@ -45,7 +88,7 @@ export default function ReviewsPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {cycles.map((cycle: any) => (
+          {filteredCycles.map((cycle: any) => (
             <Link key={cycle.id} href={`/reviews/${cycle.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">

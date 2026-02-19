@@ -85,6 +85,7 @@ export const reviewService = {
       where: { cycleId, targetId, status: "SUBMITTED" },
       include: {
         author: { select: { id: true, name: true } },
+        target: { select: { id: true, name: true, position: true } },
         assignment: { select: { reviewType: true } },
         responses: { include: { criterion: { include: { category: true } } } },
       },

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClipboardCheck, MessageSquare, Target, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { QuickFeedback } from "@/components/dashboard/quick-feedback";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -97,8 +98,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Activity + Schedule */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Activity + Schedule + Quick Feedback */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">최근 알림</CardTitle>
@@ -151,6 +152,9 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Quick Feedback */}
+        <QuickFeedback />
       </div>
     </div>
   );

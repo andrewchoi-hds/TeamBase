@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api/client";
@@ -20,6 +21,21 @@ import {
 import { MessageSquare, Plus, ShieldCheck, Lock, Send, ChevronDown, LinkIcon } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { DataTableFilters, FilterConfig } from "@/components/common/data-table-filters";
+import { ExportButton } from "@/components/common/export-button";
+
+const FEEDBACK_FILTERS: FilterConfig[] = [
+  {
+    key: "category",
+    label: "카테고리",
+    type: "select",
+    options: [
+      { value: "STRENGTH", label: "강점" },
+      { value: "IMPROVEMENT", label: "개선점" },
+      { value: "GENERAL", label: "일반" },
+    ],
+  },
+];
 
 const categoryLabels: Record<string, string> = {
   STRENGTH: "강점",
@@ -35,6 +51,7 @@ const categoryColors: Record<string, string> = {
 
 export default function FeedbackPage() {
   const { data: session } = useSession();
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
   const { data: received, isLoading: loadingReceived } = useQuery({
     queryKey: ["feedback", "received"],
@@ -55,6 +72,18 @@ export default function FeedbackPage() {
   return (
     <div>
       <PageHeader title="피드백" description="받은 피드백을 확인하세요.">
+        <div className="flex items-center gap-2">
+          <ExportButton
+            filename="피드백_내역"
+            headers={["작성자", "카테고리", "내용", "날짜"]}
+            rows={(received ?? []).map((fb: any) => [
+              fb.author?.name ?? "익명",
+              categoryLabels[fb.category],
+              fb.content,
+              format(new Date(fb.createdAt), "yyyy-MM-dd"),
+            ])}
+            disabled={!received?.length}
+          />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button>
@@ -84,6 +113,7 @@ export default function FeedbackPage() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </PageHeader>
 
       <Tabs defaultValue="received">
@@ -95,11 +125,24 @@ export default function FeedbackPage() {
 
         {/* 기명 피드백 */}
         <TabsContent value="received" className="mt-4">
-          {loadingReceived ? <LoadingState /> : !received?.length ? (
+          <div className="mb-3">
+            <DataTableFilters
+              filters={FEEDBACK_FILTERS}
+              values={filterValues}
+              onChange={(key, value) => setFilterValues((prev) => {
+                const next = { ...prev };
+                if (value) next[key] = value;
+                else delete next[key];
+                return next;
+              })}
+              onReset={() => setFilterValues({})}
+            />
+          </div>
+          {loadingReceived ? <LoadingState /> : !(received?.filter((fb: any) => !filterValues.category || fb.category === filterValues.category))?.length ? (
             <EmptyState icon={<MessageSquare className="h-12 w-12" />} title="받은 피드백이 없습니다" />
           ) : (
             <div className="space-y-3">
-              {received.map((fb: any) => (
+              {received.filter((fb: any) => !filterValues.category || fb.category === filterValues.category).map((fb: any) => (
                 <Card key={fb.id}>
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between mb-2">
