@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { Bell, LogOut, User, Moon, Sun } from "lucide-react";
+import { Bell, LogOut, User, Moon, Sun, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useNotificationStore } from "@/stores/notification-store";
+import { useUIStore } from "@/stores/ui-store";
 import Link from "next/link";
 
 const roleLabels: Record<string, string> = {
@@ -27,6 +28,7 @@ export function Header() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const { unreadCount } = useNotificationStore();
+  const { setMobileSidebarOpen } = useUIStore();
   const user = session?.user;
 
   const initials = user?.name
@@ -37,8 +39,17 @@ export function Header() {
     .slice(0, 2) ?? "?";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-6">
-      <div />
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden"
+        onClick={() => setMobileSidebarOpen(true)}
+        aria-label="메뉴 열기"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+      <div className="hidden md:block" />
       <div className="flex items-center gap-3">
         {/* Theme Toggle */}
         <Button
@@ -56,7 +67,7 @@ export function Header() {
           <Link href="/notifications" className="relative">
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground px-0.5">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground px-0.5" aria-label={`읽지 않은 알림 ${unreadCount}개`}>
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

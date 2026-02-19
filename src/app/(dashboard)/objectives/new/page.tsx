@@ -112,10 +112,11 @@ export default function NewObjectivePage() {
 
           <div className="space-y-4 pl-8">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
+              <Label htmlFor="obj-title" className="text-sm font-medium">
                 목표 <span className="text-muted-foreground font-normal">*</span>
               </Label>
               <Input
+                id="obj-title"
                 placeholder="예: 고객 만족도 90% 이상 달성"
                 className="h-11"
                 {...register("title")}
@@ -126,8 +127,9 @@ export default function NewObjectivePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">설명</Label>
+              <Label htmlFor="obj-description" className="text-sm font-medium">설명</Label>
               <Textarea
+                id="obj-description"
                 placeholder="목표에 대한 배경, 측정 방법, 기대 성과 등을 작성하세요."
                 className="min-h-[100px] resize-none"
                 {...register("description")}
@@ -145,11 +147,13 @@ export default function NewObjectivePage() {
             <h2 className="text-sm font-semibold uppercase tracking-wider">목표 수준</h2>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pl-8">
+          <div className="grid grid-cols-3 gap-3 pl-8" role="radiogroup" aria-label="목표 수준">
             {levels.map((level) => (
               <button
                 key={level.value}
                 type="button"
+                role="radio"
+                aria-checked={selectedLevel === level.value}
                 onClick={() => {
                   setSelectedLevel(level.value);
                   setValue("level", level.value);
@@ -198,10 +202,11 @@ export default function NewObjectivePage() {
             {/* Manual date pickers */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label htmlFor="obj-start-date" className="text-sm font-medium">
                   시작일 <span className="text-muted-foreground font-normal">*</span>
                 </Label>
                 <DatePicker
+                  id="obj-start-date"
                   value={startDate}
                   onChange={handleStartDateChange}
                   placeholder="시작일 선택"
@@ -212,10 +217,11 @@ export default function NewObjectivePage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label htmlFor="obj-end-date" className="text-sm font-medium">
                   종료일 <span className="text-muted-foreground font-normal">*</span>
                 </Label>
                 <DatePicker
+                  id="obj-end-date"
                   value={endDate}
                   onChange={handleEndDateChange}
                   placeholder="종료일 선택"

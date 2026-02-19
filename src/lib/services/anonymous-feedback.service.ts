@@ -55,29 +55,35 @@ export const anonymousFeedbackService = {
   },
 
   async submit(rawToken: string, content: string, category: FeedbackCategory = "GENERAL") {
-    const validation = await this.validateToken(rawToken);
-    if (!validation.valid) throw new Error(validation.error);
-
+    const tokenHash = hashToken(rawToken);
     const submissionToken = doubleHash(rawToken);
     const roundedDate = roundToDay(new Date());
 
-    const [feedback] = await Promise.all([
-      prisma.anonymousFeedback.create({
+    return prisma.$transaction(async (tx) => {
+      // 트랜잭션 내에서 토큰을 검증하고 즉시 사용 처리 (TOCTOU 방지)
+      const token = await tx.anonymousFeedbackToken.findUnique({
+        where: { tokenHash },
+      });
+
+      if (!token) throw new Error("유효하지 않은 토큰입니다.");
+      if (token.isUsed) throw new Error("이미 사용된 토큰입니다.");
+      if (token.expiresAt < new Date()) throw new Error("만료된 토큰입니다.");
+
+      await tx.anonymousFeedbackToken.update({
+        where: { id: token.id },
+        data: { isUsed: true },
+      });
+
+      return tx.anonymousFeedback.create({
         data: {
-          targetId: validation.targetId,
+          targetId: token.targetId,
           content,
           category,
           submissionToken,
           createdAt: roundedDate,
         },
-      }),
-      prisma.anonymousFeedbackToken.update({
-        where: { id: validation.tokenId },
-        data: { isUsed: true },
-      }),
-    ]);
-
-    return feedback;
+      });
+    });
   },
 
   async getByTarget(targetId: string) {

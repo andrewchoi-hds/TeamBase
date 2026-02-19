@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, unauthorized } from "@/lib/auth-utils";
+import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 
 async function handleGET(req: NextRequest) {
@@ -42,11 +42,18 @@ async function handlePOST(req: NextRequest) {
   if (!user) return unauthorized();
 
   const data = await req.json();
+
+  // 다른 사용자의 목표를 대리 생성하는 것은 ADMIN/MANAGER만 가능
+  const effectiveOwnerId = data.ownerId || user.id;
+  if (effectiveOwnerId !== user.id && user.role !== "ADMIN" && user.role !== "MANAGER") {
+    return forbidden();
+  }
+
   const objective = await prisma.objective.create({
     data: {
       title: data.title,
       description: data.description,
-      ownerId: data.ownerId || user.id,
+      ownerId: effectiveOwnerId,
       level: data.level || "INDIVIDUAL",
       startDate: new Date(data.startDate),
       endDate: new Date(data.endDate),

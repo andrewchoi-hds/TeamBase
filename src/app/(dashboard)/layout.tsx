@@ -18,11 +18,12 @@ export default function DashboardLayout({
       <div
         className={cn(
           "transition-all duration-300",
-          sidebarCollapsed ? "ml-[68px]" : "ml-[240px]"
+          "md:ml-[240px]",
+          sidebarCollapsed && "md:ml-[68px]"
         )}
       >
         <Header />
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

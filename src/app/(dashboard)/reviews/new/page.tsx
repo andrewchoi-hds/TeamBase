@@ -139,10 +139,11 @@ export default function NewReviewCyclePage() {
             {/* Manual date pickers */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label htmlFor="cycle-start-date" className="text-sm font-medium">
                   시작일 <span className="text-muted-foreground font-normal">*</span>
                 </Label>
                 <DatePicker
+                  id="cycle-start-date"
                   value={startDate}
                   onChange={handleStartDateChange}
                   placeholder="시작일 선택"
@@ -153,10 +154,11 @@ export default function NewReviewCyclePage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label htmlFor="cycle-end-date" className="text-sm font-medium">
                   종료일 <span className="text-muted-foreground font-normal">*</span>
                 </Label>
                 <DatePicker
+                  id="cycle-end-date"
                   value={endDate}
                   onChange={handleEndDateChange}
                   placeholder="종료일 선택"
@@ -196,10 +198,11 @@ export default function NewReviewCyclePage() {
 
           <div className="space-y-4 pl-8">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
+              <Label htmlFor="cycle-name" className="text-sm font-medium">
                 이름 <span className="text-muted-foreground font-normal">*</span>
               </Label>
               <Input
+                id="cycle-name"
                 placeholder="예: 2026년 1분기 평가"
                 className="h-11"
                 {...register("name")}
@@ -210,8 +213,9 @@ export default function NewReviewCyclePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">설명</Label>
+              <Label htmlFor="cycle-description" className="text-sm font-medium">설명</Label>
               <Textarea
+                id="cycle-description"
                 placeholder="이 평가 주기의 목적, 참여 대상, 특이사항 등을 기재하세요."
                 className="min-h-[100px] resize-none"
                 {...register("description")}

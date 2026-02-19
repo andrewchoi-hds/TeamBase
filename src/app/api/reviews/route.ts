@@ -50,32 +50,35 @@ async function handlePOST(req: NextRequest) {
     return badRequest("assignmentId, cycleId, and targetId are required");
   }
 
-  const review = await prisma.review.create({
-    data: {
-      assignmentId,
-      cycleId,
-      authorId: user.id,
-      targetId,
-      status: "DRAFT",
-      overallComment: overallComment || null,
-    },
-  });
-
-  // 응답 일괄 생성
-  if (responses && Array.isArray(responses) && responses.length > 0) {
-    await prisma.reviewResponse.createMany({
-      data: responses.map((r: any) => ({
-        reviewId: review.id,
-        criterionId: r.criterionId,
-        rating: r.rating,
-        comment: r.comment || null,
-      })),
+  const review = await prisma.$transaction(async (tx) => {
+    const created = await tx.review.create({
+      data: {
+        assignmentId,
+        cycleId,
+        authorId: user.id,
+        targetId,
+        status: "DRAFT",
+        overallComment: overallComment || null,
+      },
     });
-  }
 
-  await prisma.reviewAssignment.update({
-    where: { id: assignmentId },
-    data: { status: "IN_PROGRESS" },
+    if (responses && Array.isArray(responses) && responses.length > 0) {
+      await tx.reviewResponse.createMany({
+        data: responses.map((r: any) => ({
+          reviewId: created.id,
+          criterionId: r.criterionId,
+          rating: r.rating,
+          comment: r.comment || null,
+        })),
+      });
+    }
+
+    await tx.reviewAssignment.update({
+      where: { id: assignmentId },
+      data: { status: "IN_PROGRESS" },
+    });
+
+    return created;
   });
 
   return NextResponse.json(review, { status: 201 });

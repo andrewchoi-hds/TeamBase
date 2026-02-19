@@ -121,9 +121,9 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
               {errorMsg && <Alert variant="destructive" className="mb-4"><AlertDescription>{errorMsg}</AlertDescription></Alert>}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>카테고리</Label>
+                  <Label htmlFor="anon-category">카테고리</Label>
                   <Select defaultValue="GENERAL" onValueChange={(v) => setValue("category", v as any)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="anon-category"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="STRENGTH">강점</SelectItem>
                       <SelectItem value="IMPROVEMENT">개선점</SelectItem>
@@ -132,8 +132,8 @@ export default function AnonymousFeedbackPage({ params }: { params: { token: str
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>피드백 내용 *</Label>
-                  <Textarea {...register("content")} placeholder="구체적인 피드백을 작성해주세요. (최소 10자)" rows={6} />
+                  <Label htmlFor="anon-content">피드백 내용 *</Label>
+                  <Textarea id="anon-content" {...register("content")} placeholder="구체적인 피드백을 작성해주세요. (최소 10자)" rows={6} />
                   {errors.content && <p className="text-sm text-destructive">{errors.content.message}</p>}
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>

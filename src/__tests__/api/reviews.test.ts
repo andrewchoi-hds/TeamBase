@@ -13,11 +13,18 @@ vi.mock("@/lib/auth-utils", () => ({
   },
 }));
 
+const mockTx = {
+  review: { create: vi.fn() },
+  reviewResponse: { createMany: vi.fn() },
+  reviewAssignment: { update: vi.fn() },
+};
+
 vi.mock("@/lib/prisma", () => ({
   default: {
     review: { findMany: vi.fn(), create: vi.fn() },
     reviewResponse: { createMany: vi.fn() },
     reviewAssignment: { update: vi.fn() },
+    $transaction: vi.fn((cb: any) => cb(mockTx)),
   },
 }));
 
@@ -66,9 +73,9 @@ describe("Reviews API", () => {
       vi.mocked(getCurrentUser).mockResolvedValue({
         id: "user-1", email: "a@b.com", name: "테스트", role: "MEMBER" as const,
       });
-      vi.mocked(prisma.review.create).mockResolvedValue({ id: "review-1" } as any);
-      vi.mocked(prisma.reviewResponse.createMany).mockResolvedValue({ count: 2 });
-      vi.mocked(prisma.reviewAssignment.update).mockResolvedValue({} as any);
+      mockTx.review.create.mockResolvedValue({ id: "review-1" } as any);
+      mockTx.reviewResponse.createMany.mockResolvedValue({ count: 2 });
+      mockTx.reviewAssignment.update.mockResolvedValue({} as any);
 
       const { POST } = await import("@/app/api/reviews/route");
       const req = createNextRequest("/api/reviews", {
@@ -86,7 +93,7 @@ describe("Reviews API", () => {
 
       const res = await POST(req, { params: {} } as any);
       expect(res.status).toBe(201);
-      expect(prisma.reviewResponse.createMany).toHaveBeenCalled();
+      expect(mockTx.reviewResponse.createMany).toHaveBeenCalled();
     });
   });
 });

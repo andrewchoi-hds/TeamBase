@@ -15,13 +15,16 @@ import { toast } from "sonner";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function RatingScale({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function RatingScale({ value, onChange, label }: { value: number; onChange: (v: number) => void; label?: string }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
           type="button"
+          role="radio"
+          aria-checked={n === value}
+          aria-label={`${n}점`}
           onClick={() => onChange(n)}
           className={cn(
             "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
@@ -150,6 +153,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
                     )}
                   </div>
                   <RatingScale
+                    label={`${criterion.name} 평가 점수`}
                     value={responses[criterion.id]?.rating ?? 0}
                     onChange={(rating) =>
                       setResponses((prev) => ({
@@ -159,6 +163,8 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
                     }
                   />
                   <Textarea
+                    id={`comment-${criterion.id}`}
+                    aria-label={`${criterion.name} 코멘트`}
                     placeholder="코멘트 (선택)"
                     value={responses[criterion.id]?.comment ?? ""}
                     onChange={(e) =>
@@ -182,6 +188,8 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
           </CardHeader>
           <CardContent>
             <Textarea
+              id="overall-comment"
+              aria-label="종합 의견"
               placeholder="전반적인 평가 의견을 작성해주세요."
               value={overallComment}
               onChange={(e) => setOverallComment(e.target.value)}

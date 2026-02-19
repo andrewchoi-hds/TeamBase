@@ -51,9 +51,9 @@ export default function GiveFeedbackPage() {
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
             <div className="space-y-2">
-              <Label>대상자 *</Label>
+              <Label htmlFor="fb-target">대상자 *</Label>
               <Select onValueChange={(v) => setValue("targetId", v)}>
-                <SelectTrigger><SelectValue placeholder="대상자 선택" /></SelectTrigger>
+                <SelectTrigger id="fb-target"><SelectValue placeholder="대상자 선택" /></SelectTrigger>
                 <SelectContent>
                   {users?.map((u: any) => (
                     <SelectItem key={u.id} value={u.id}>{u.name} {u.position ? `(${u.position})` : ""}</SelectItem>
@@ -63,9 +63,9 @@ export default function GiveFeedbackPage() {
               {errors.targetId && <p className="text-sm text-destructive">{errors.targetId.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>카테고리</Label>
+              <Label htmlFor="fb-category">카테고리</Label>
               <Select defaultValue="GENERAL" onValueChange={(v) => setValue("category", v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="fb-category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="STRENGTH">강점</SelectItem>
                   <SelectItem value="IMPROVEMENT">개선점</SelectItem>
@@ -74,8 +74,8 @@ export default function GiveFeedbackPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>내용 *</Label>
-              <Textarea {...register("content")} placeholder="피드백 내용을 작성해주세요." rows={6} />
+              <Label htmlFor="fb-content">내용 *</Label>
+              <Textarea id="fb-content" {...register("content")} placeholder="피드백 내용을 작성해주세요." rows={6} />
               {errors.content && <p className="text-sm text-destructive">{errors.content.message}</p>}
             </div>
             <div className="flex gap-2">

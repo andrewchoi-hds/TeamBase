@@ -21,6 +21,7 @@ interface DatePickerProps {
   fromDate?: Date;
   toDate?: Date;
   className?: string;
+  id?: string;
 }
 
 export function DatePicker({
@@ -31,6 +32,7 @@ export function DatePicker({
   fromDate,
   toDate,
   className,
+  id,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -38,6 +40,7 @@ export function DatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           disabled={disabled}
           className={cn(
