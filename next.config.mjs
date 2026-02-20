@@ -1,14 +1,32 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "recharts",
+      "date-fns",
+      "@radix-ui/react-alert-dialog",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-select",
+      "@radix-ui/react-tabs",
+    ],
+  },
+};
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+const isDev = process.env.NODE_ENV === "development";
 
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  disableLogger: true,
-  automaticVercelMonitors: true,
-});
+export default isDev
+  ? nextConfig
+  : withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      disableLogger: true,
+      automaticVercelMonitors: true,
+    });

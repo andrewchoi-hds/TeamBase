@@ -56,6 +56,7 @@ export default function FeedbackPage() {
   const { data: session, status: sessionStatus } = useSession();
   const isReady = sessionStatus === "authenticated";
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState("received");
 
   const { data: received, isLoading: loadingReceived } = useQuery({
     queryKey: ["feedback", "received"],
@@ -78,7 +79,7 @@ export default function FeedbackPage() {
   const { data: goals, isLoading: loadingGoals } = useQuery({
     queryKey: ["development-goals"],
     queryFn: () => api.get<any[]>("/development-goals"),
-    enabled: isReady,
+    enabled: isReady && activeTab === "goals",
   });
 
   return (
@@ -128,7 +129,7 @@ export default function FeedbackPage() {
         </div>
       </PageHeader>
 
-      <Tabs defaultValue="received">
+      <Tabs defaultValue="received" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="received">기명 피드백</TabsTrigger>
           <TabsTrigger value="anonymous">무기명 피드백</TabsTrigger>

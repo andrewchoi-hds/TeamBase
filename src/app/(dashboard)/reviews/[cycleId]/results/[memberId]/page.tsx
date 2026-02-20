@@ -31,14 +31,15 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
   const { data: session } = useSession();
   const isOwnReport = session?.user?.id === memberId;
 
-  const { data: previousGoals } = useQuery({
-    queryKey: ["development-goals", memberId],
-    queryFn: () => api.get<any[]>(`/development-goals?ownerId=${memberId}`),
-  });
-
   const { data: report, isLoading } = useQuery({
     queryKey: ["review-report", cycleId, memberId],
     queryFn: () => api.get<AggregatedReport & { canViewIndividualReviews?: boolean }>(`/review-cycles/${cycleId}/results/${memberId}/report`),
+  });
+
+  const { data: previousGoals } = useQuery({
+    queryKey: ["development-goals", memberId],
+    queryFn: () => api.get<any[]>(`/development-goals?ownerId=${memberId}`),
+    enabled: !!report,
   });
 
   const { data: reviews } = useQuery({

@@ -37,11 +37,12 @@ interface DevelopmentContext {
 
 export function DevelopmentContextPanel({ targetUserId, defaultExpanded = false }: DevelopmentContextPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [hasBeenExpanded, setHasBeenExpanded] = useState(defaultExpanded);
 
-  const { data: context } = useQuery({
+  const { data: context, isLoading } = useQuery({
     queryKey: ["development-context", targetUserId],
     queryFn: () => api.get<DevelopmentContext>(`/users/${targetUserId}/development-context`),
-    enabled: !!targetUserId,
+    enabled: !!targetUserId && hasBeenExpanded,
   });
 
   if (!context) return null;
@@ -56,7 +57,7 @@ export function DevelopmentContextPanel({ targetUserId, defaultExpanded = false 
 
   return (
     <Card className="border-dashed">
-      <CardHeader className="py-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      <CardHeader className="py-3 cursor-pointer" onClick={() => { if (!hasBeenExpanded) setHasBeenExpanded(true); setExpanded(!expanded); }}>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
