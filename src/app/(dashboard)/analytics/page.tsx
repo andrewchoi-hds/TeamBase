@@ -5,9 +5,10 @@ import { useSession } from "next-auth/react";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
-import { ScoreTrendChart } from "@/components/dashboard/score-trend-chart";
-import { OkrComparisonChart } from "@/components/dashboard/okr-comparison-chart";
-import { FeedbackTrendChart } from "@/components/dashboard/feedback-trend-chart";
+import dynamic from "next/dynamic";
+const ScoreTrendChart = dynamic(() => import("@/components/dashboard/score-trend-chart").then(m => m.ScoreTrendChart), { ssr: false });
+const OkrComparisonChart = dynamic(() => import("@/components/dashboard/okr-comparison-chart").then(m => m.OkrComparisonChart), { ssr: false });
+const FeedbackTrendChart = dynamic(() => import("@/components/dashboard/feedback-trend-chart").then(m => m.FeedbackTrendChart), { ssr: false });
 
 interface TrendData {
   scoreTrend: { cycle: string; avgScore: number; date: string }[];
