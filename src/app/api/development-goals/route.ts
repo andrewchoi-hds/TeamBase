@@ -10,7 +10,11 @@ async function handleGET(req: NextRequest) {
 
   const searchParams = req.nextUrl.searchParams;
   const ownerId = searchParams.get("ownerId") ?? user.id;
-  const status = searchParams.get("status") as "ACTIVE" | "COMPLETED" | "CANCELLED" | null;
+  const statusParam = searchParams.get("status");
+  const validStatuses = ["ACTIVE", "COMPLETED", "CANCELLED"] as const;
+  const status = statusParam && validStatuses.includes(statusParam as any)
+    ? (statusParam as "ACTIVE" | "COMPLETED" | "CANCELLED")
+    : null;
 
   // 다른 사용자의 목표 조회: ADMIN 또는 MANAGER만 가능
   if (ownerId !== user.id && user.role !== "ADMIN") {

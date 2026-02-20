@@ -105,7 +105,12 @@ export const developmentGoalService = {
     const existing = await prisma.developmentGoal.findUnique({ where: { id } });
     if (!existing) throw new Error("개선 목표를 찾을 수 없습니다.");
 
-    const autoCompleted = input.progress != null && input.progress >= 100 && existing.status === "ACTIVE";
+    // 명시적 상태 지정이 없을 때만 자동 완료 적용
+    const autoCompleted =
+      input.status == null &&
+      input.progress != null &&
+      input.progress >= 100 &&
+      existing.status === "ACTIVE";
 
     const goal = await prisma.developmentGoal.update({
       where: { id },

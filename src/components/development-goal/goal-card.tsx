@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +42,11 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
   const [isEditing, setIsEditing] = useState(false);
   const [progress, setProgress] = useState(goal.progress);
   const queryClient = useQueryClient();
+
+  // 서버 데이터 refetch 후 로컬 상태 동기화
+  useEffect(() => {
+    if (!isEditing) setProgress(goal.progress);
+  }, [goal.progress, isEditing]);
 
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
