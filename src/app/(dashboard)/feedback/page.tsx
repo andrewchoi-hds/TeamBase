@@ -18,11 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MessageSquare, Plus, ShieldCheck, Lock, Send, ChevronDown, LinkIcon } from "lucide-react";
+import { MessageSquare, Plus, ShieldCheck, Lock, Send, ChevronDown, LinkIcon, Target } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { DataTableFilters, FilterConfig } from "@/components/common/data-table-filters";
 import { ExportButton } from "@/components/common/export-button";
+import { GoalCard } from "@/components/development-goal/goal-card";
+import { CreateGoalDialog } from "@/components/development-goal/create-goal-dialog";
+import { LinkFeedbackDialog } from "@/components/development-goal/link-feedback-dialog";
 
 const FEEDBACK_FILTERS: FilterConfig[] = [
   {
@@ -69,6 +72,12 @@ export default function FeedbackPage() {
   const { data: sent, isLoading: loadingSent } = useQuery({
     queryKey: ["feedback", "sent"],
     queryFn: () => api.get<any[]>("/feedback/identified?type=given"),
+    enabled: isReady,
+  });
+
+  const { data: goals, isLoading: loadingGoals } = useQuery({
+    queryKey: ["development-goals"],
+    queryFn: () => api.get<any[]>("/development-goals"),
     enabled: isReady,
   });
 
@@ -124,6 +133,7 @@ export default function FeedbackPage() {
           <TabsTrigger value="received">기명 피드백</TabsTrigger>
           <TabsTrigger value="anonymous">무기명 피드백</TabsTrigger>
           <TabsTrigger value="sent">보낸 피드백</TabsTrigger>
+          <TabsTrigger value="goals">개선 목표</TabsTrigger>
         </TabsList>
 
         {/* 기명 피드백 */}
@@ -158,6 +168,13 @@ export default function FeedbackPage() {
                       <span className="text-xs text-muted-foreground">{format(new Date(fb.createdAt), "yyyy.M.d")}</span>
                     </div>
                     <p className="text-sm">{fb.content}</p>
+                    <div className="mt-2 flex justify-end">
+                      <LinkFeedbackDialog
+                        feedbackId={fb.id}
+                        feedbackType="identified"
+                        feedbackContent={fb.content}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -246,6 +263,27 @@ export default function FeedbackPage() {
                     <p className="text-sm">{fb.content}</p>
                   </CardContent>
                 </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* 개선 목표 */}
+        <TabsContent value="goals" className="mt-4">
+          <div className="flex justify-end mb-3">
+            <CreateGoalDialog sourceType="SELF" />
+          </div>
+          {loadingGoals ? <LoadingState /> : !goals?.length ? (
+            <EmptyState
+              icon={<Target className="h-12 w-12" />}
+              title="개선 목표가 없습니다"
+              description="피드백을 기반으로 성장 목표를 설정해보세요."
+              action={<CreateGoalDialog sourceType="SELF" trigger={<Button><Plus className="mr-2 h-4 w-4" />목표 생성</Button>} />}
+            />
+          ) : (
+            <div className="space-y-3">
+              {goals.map((goal: any) => (
+                <GoalCard key={goal.id} goal={goal} editable />
               ))}
             </div>
           )}

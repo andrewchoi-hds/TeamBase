@@ -13,6 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ExportButton } from "@/components/common/export-button";
 import { GradeBadge } from "@/components/review/grade-badge";
+import { GoalCard } from "@/components/development-goal/goal-card";
+import { CreateGoalDialog } from "@/components/development-goal/create-goal-dialog";
+import { Target } from "lucide-react";
 import type { AggregatedReport } from "@/lib/utils/review-aggregation";
 
 const reviewTypeLabels: Record<string, string> = {
@@ -26,6 +29,12 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
   const { cycleId, memberId } = params;
 
   const { data: session } = useSession();
+  const isOwnReport = session?.user?.id === memberId;
+
+  const { data: previousGoals } = useQuery({
+    queryKey: ["development-goals", memberId],
+    queryFn: () => api.get<any[]>(`/development-goals?ownerId=${memberId}`),
+  });
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["review-report", cycleId, memberId],
@@ -110,6 +119,49 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
       </div>
 
       <StrengthWeakness strengths={report.strengths} weaknesses={report.weaknesses} />
+
+      {/* 이전 개선 목표 현황 */}
+      {previousGoals && previousGoals.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              개선 목표 현황
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {previousGoals.map((goal: any) => (
+              <GoalCard key={goal.id} goal={goal} editable={isOwnReport} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 개선 목표 설정 CTA */}
+      {isOwnReport && report.weaknesses.length > 0 && (
+        <Card className="border-dashed border-primary/30 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">약점 영역을 개선 목표로 전환하세요</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  하위 영역을 기반으로 다음 평가까지의 성장 목표를 설정할 수 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {report.weaknesses.slice(0, 2).map((w: any) => (
+                  <CreateGoalDialog
+                    key={w.criterionId}
+                    sourceType="REVIEW"
+                    sourceCycleId={cycleId}
+                    defaultTitle={`${w.criterionName} 역량 강화`}
+                  />
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {report.canViewIndividualReviews !== false && (
         <>

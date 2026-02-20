@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DevelopmentContextPanel } from "@/components/review/development-context-panel";
 
 function RatingScale({ value, onChange, label, hasError }: { value: number; onChange: (v: number) => void; label?: string; hasError?: boolean }) {
   return (
@@ -178,6 +179,8 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
       />
 
       <div className="max-w-3xl space-y-6">
+        <DevelopmentContextPanel targetUserId={targetId} />
+
         {categories.map((category: any) => (
           <Card key={category.id}>
             <CardHeader>

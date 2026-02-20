@@ -58,6 +58,7 @@ model User {
   accessLogsViewer AccessLog[] @relation("AccessLogViewer")
   accessLogsTarget AccessLog[] @relation("AccessLogTarget")
   auditLogs        AuditLog[]
+  developmentGoals DevelopmentGoal[] @relation("DevGoalOwner")
 
   @@index([departmentId])
   @@index([managerId])
@@ -143,6 +144,7 @@ model ReviewCycle {
   template    ReviewTemplate?    @relation(fields: [templateId], references: [id])
   assignments ReviewAssignment[]
   reviews     Review[]
+  developmentGoals DevelopmentGoal[]
 
   @@index([status])
 }
@@ -287,6 +289,7 @@ model IdentifiedFeedback {
 
   author User @relation("FeedbackAuthor", fields: [authorId], references: [id])
   target User @relation("FeedbackTarget", fields: [targetId], references: [id])
+  developmentGoalLinks DevelopmentGoalFeedback[]
 
   @@index([authorId])
   @@index([targetId])
@@ -301,6 +304,7 @@ model AnonymousFeedback {
   createdAt       DateTime         @default(now())
 
   target User @relation("AnonymousFeedbackTarget", fields: [targetId], references: [id])
+  developmentGoalLinks DevelopmentGoalFeedback[]
 
   @@index([targetId])
 }
@@ -571,6 +575,7 @@ enum AuditEntityType {
   REVIEW_ASSIGNMENT
   REVIEW_CYCLE
   REVIEW_TEMPLATE
+  DEVELOPMENT_GOAL
 }
 
 model AuditLog {
@@ -588,4 +593,53 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([userId])
   @@index([createdAt])
+}
+
+// ============================================
+// Development Goal System
+// ============================================
+
+enum DevelopmentGoalStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model DevelopmentGoal {
+  id            String                @id @default(cuid())
+  ownerId       String
+  title         String
+  description   String?               @db.Text
+  status        DevelopmentGoalStatus  @default(ACTIVE)
+  sourceType    String                @default("SELF") // REVIEW | FEEDBACK | SELF
+  sourceCycleId String?
+  targetDate    DateTime?
+  completedAt   DateTime?
+  progress      Int                   @default(0)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  owner         User                  @relation("DevGoalOwner", fields: [ownerId], references: [id])
+  sourceCycle   ReviewCycle?          @relation(fields: [sourceCycleId], references: [id])
+  feedbackLinks DevelopmentGoalFeedback[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([sourceCycleId])
+}
+
+model DevelopmentGoalFeedback {
+  id                   String   @id @default(cuid())
+  developmentGoalId    String
+  identifiedFeedbackId String?
+  anonymousFeedbackId  String?
+  createdAt            DateTime @default(now())
+
+  developmentGoal    DevelopmentGoal     @relation(fields: [developmentGoalId], references: [id], onDelete: Cascade)
+  identifiedFeedback IdentifiedFeedback? @relation(fields: [identifiedFeedbackId], references: [id], onDelete: SetNull)
+  anonymousFeedback  AnonymousFeedback?  @relation(fields: [anonymousFeedbackId], references: [id], onDelete: SetNull)
+
+  @@unique([developmentGoalId, identifiedFeedbackId])
+  @@unique([developmentGoalId, anonymousFeedbackId])
+  @@index([developmentGoalId])
 }
