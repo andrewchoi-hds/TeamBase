@@ -20,7 +20,7 @@ async function handlePOST(req: NextRequest, { params }: { params: { id: string }
   const link = await developmentGoalService.linkFeedback(params.id, {
     identifiedFeedbackId: data.identifiedFeedbackId,
     anonymousFeedbackId: data.anonymousFeedbackId,
-  });
+  }, user.id);
 
   return NextResponse.json(link, { status: 201 });
 }

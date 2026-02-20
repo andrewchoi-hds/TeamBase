@@ -50,7 +50,17 @@ export const developmentGoalService = {
       entityType: "DEVELOPMENT_GOAL",
       entityId: goal.id,
       userId,
-      metadata: { ownerId: input.ownerId, sourceType: input.sourceType ?? "SELF" },
+      changes: {
+        title: input.title,
+        description: input.description ?? null,
+        sourceType: input.sourceType ?? "SELF",
+        sourceCycleId: input.sourceCycleId ?? null,
+        targetDate: input.targetDate ?? null,
+      },
+      metadata: {
+        ownerId: input.ownerId,
+        linkedFeedbackIds: input.feedbackIds ?? [],
+      },
     });
 
     return goal;
@@ -95,7 +105,7 @@ export const developmentGoalService = {
     const existing = await prisma.developmentGoal.findUnique({ where: { id } });
     if (!existing) throw new Error("개선 목표를 찾을 수 없습니다.");
 
-    const autoCompleted = input.progress != null && input.progress >= 100;
+    const autoCompleted = input.progress != null && input.progress >= 100 && existing.status === "ACTIVE";
 
     const goal = await prisma.developmentGoal.update({
       where: { id },
@@ -105,7 +115,7 @@ export const developmentGoalService = {
         ...(input.status != null && { status: input.status }),
         ...(input.progress != null && { progress: Math.min(input.progress, 100) }),
         ...(input.targetDate !== undefined && { targetDate: input.targetDate ? new Date(input.targetDate) : null }),
-        ...(autoCompleted && existing.status === "ACTIVE" && {
+        ...(autoCompleted && {
           status: "COMPLETED",
           completedAt: new Date(),
         }),
@@ -119,18 +129,62 @@ export const developmentGoalService = {
       },
     });
 
+    // before → after diff 로그
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+
+    if (input.title != null && input.title !== existing.title) {
+      before.title = existing.title; after.title = input.title;
+    }
+    if (input.description !== undefined && input.description !== existing.description) {
+      before.description = existing.description; after.description = input.description;
+    }
+    if (input.progress != null && input.progress !== existing.progress) {
+      before.progress = existing.progress; after.progress = Math.min(input.progress, 100);
+    }
+    if (input.status != null && input.status !== existing.status) {
+      before.status = existing.status; after.status = input.status;
+    }
+    if (input.targetDate !== undefined) {
+      before.targetDate = existing.targetDate?.toISOString() ?? null;
+      after.targetDate = input.targetDate ?? null;
+    }
+
     await auditLogService.log({
       action: "UPDATE",
       entityType: "DEVELOPMENT_GOAL",
       entityId: id,
       userId,
-      changes: input as unknown as Record<string, unknown>,
+      changes: { before, after },
+      metadata: { ownerId: existing.ownerId },
     });
+
+    // 자동 완료 시 별도 STATUS_CHANGE 로그
+    if (autoCompleted) {
+      await auditLogService.log({
+        action: "STATUS_CHANGE",
+        entityType: "DEVELOPMENT_GOAL",
+        entityId: id,
+        userId,
+        changes: { before: { status: existing.status }, after: { status: "COMPLETED" } },
+        metadata: {
+          reason: "progress_100",
+          ownerId: existing.ownerId,
+          completedAt: new Date().toISOString(),
+        },
+      });
+    }
 
     return goal;
   },
 
   async delete(id: string, userId: string) {
+    // 삭제 전 스냅샷 보존
+    const existing = await prisma.developmentGoal.findUnique({
+      where: { id },
+      include: { feedbackLinks: { select: { identifiedFeedbackId: true, anonymousFeedbackId: true } } },
+    });
+
     await prisma.developmentGoal.delete({ where: { id } });
 
     await auditLogService.log({
@@ -138,17 +192,46 @@ export const developmentGoalService = {
       entityType: "DEVELOPMENT_GOAL",
       entityId: id,
       userId,
+      changes: existing ? {
+        title: existing.title,
+        description: existing.description,
+        status: existing.status,
+        progress: existing.progress,
+        sourceType: existing.sourceType,
+        sourceCycleId: existing.sourceCycleId,
+      } : undefined,
+      metadata: {
+        ownerId: existing?.ownerId,
+        linkedFeedbacks: existing?.feedbackLinks ?? [],
+        deletedAt: new Date().toISOString(),
+      },
     });
   },
 
-  async linkFeedback(goalId: string, feedbackId: { identifiedFeedbackId?: string; anonymousFeedbackId?: string }) {
-    return prisma.developmentGoalFeedback.create({
+  async linkFeedback(goalId: string, feedbackId: { identifiedFeedbackId?: string; anonymousFeedbackId?: string }, userId?: string) {
+    const link = await prisma.developmentGoalFeedback.create({
       data: {
         developmentGoalId: goalId,
         identifiedFeedbackId: feedbackId.identifiedFeedbackId ?? null,
         anonymousFeedbackId: feedbackId.anonymousFeedbackId ?? null,
       },
     });
+
+    await auditLogService.log({
+      action: "UPDATE",
+      entityType: "DEVELOPMENT_GOAL",
+      entityId: goalId,
+      userId: userId ?? null,
+      changes: {
+        linkedFeedback: {
+          identifiedFeedbackId: feedbackId.identifiedFeedbackId ?? null,
+          anonymousFeedbackId: feedbackId.anonymousFeedbackId ?? null,
+        },
+      },
+      metadata: { action: "LINK_FEEDBACK", linkId: link.id },
+    });
+
+    return link;
   },
 
   async getDevelopmentContext(userId: string) {
