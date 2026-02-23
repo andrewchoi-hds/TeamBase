@@ -26,7 +26,15 @@ async function handleGET(req: NextRequest) {
     return NextResponse.json(result);
   }
 
-  return NextResponse.json({ error: "entityType+entityId 또는 userId 파라미터가 필요합니다." }, { status: 400 });
+  // 전체 목록 조회 (필터 선택적)
+  const action = searchParams.get("action") as import("@prisma/client").AuditAction | null;
+  const result = await auditLogService.list({
+    action: action ?? undefined,
+    entityType: entityType ?? undefined,
+    limit,
+    offset,
+  });
+  return NextResponse.json(result);
 }
 
 export const GET = withErrorHandler(handleGET);

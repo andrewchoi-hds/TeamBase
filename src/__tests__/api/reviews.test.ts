@@ -7,6 +7,10 @@ vi.mock("@/lib/auth-utils", () => ({
     const { NextResponse } = require("next/server");
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   },
+  forbidden: () => {
+    const { NextResponse } = require("next/server");
+    return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+  },
   badRequest: (msg: string) => {
     const { NextResponse } = require("next/server");
     return NextResponse.json({ error: msg }, { status: 400 });
@@ -23,7 +27,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     review: { findMany: vi.fn(), create: vi.fn() },
     reviewResponse: { createMany: vi.fn() },
-    reviewAssignment: { update: vi.fn() },
+    reviewAssignment: { update: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn((cb: any) => cb(mockTx)),
   },
 }));
@@ -73,6 +77,9 @@ describe("Reviews API", () => {
       vi.mocked(getCurrentUser).mockResolvedValue({
         id: "user-1", email: "a@b.com", name: "테스트", role: "MEMBER" as const,
       });
+      vi.mocked(prisma.reviewAssignment.findUnique).mockResolvedValue({
+        reviewerId: "user-1", status: "PENDING",
+      } as any);
       mockTx.review.create.mockResolvedValue({ id: "review-1" } as any);
       mockTx.reviewResponse.createMany.mockResolvedValue({ count: 2 });
       mockTx.reviewAssignment.update.mockResolvedValue({} as any);

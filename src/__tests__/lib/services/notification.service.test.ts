@@ -11,7 +11,15 @@ vi.mock("@/lib/prisma", () => ({
       count: vi.fn(),
       updateMany: vi.fn(),
     },
+    user: {
+      findMany: vi.fn(),
+    },
   },
+}));
+
+// 이메일 발송 mock (실패해도 무시되도록)
+vi.mock("@/lib/email/send-email", () => ({
+  sendEmail: vi.fn(),
 }));
 
 import prisma from "@/lib/prisma";
@@ -44,6 +52,7 @@ describe("NotificationService", () => {
         { userId: "user-2", type: "REVIEW_REQUESTED" as const, title: "t2", message: "m2" },
       ];
       vi.mocked(prisma.notification.createMany).mockResolvedValue({ count: 2 });
+      vi.mocked(prisma.user.findMany).mockResolvedValue([]);
 
       await notificationService.createMany(inputs);
       expect(prisma.notification.createMany).toHaveBeenCalledWith({ data: inputs });

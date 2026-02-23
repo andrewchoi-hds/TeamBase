@@ -27,6 +27,10 @@ export default isDev
 
       silent: !process.env.CI,
       widenClientFileUpload: true,
-      disableLogger: true,
-      automaticVercelMonitors: true,
+      bundleSizeOptimizations: {
+        excludeDebugStatements: true,
+        excludePerformanceMonitoring: false,
+        excludeReplayIframe: true,
+        excludeReplayShadowDom: true,
+      },
     });

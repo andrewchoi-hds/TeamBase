@@ -2,8 +2,8 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthenticatedQuery } from "@/hooks/use-authenticated-query";
 import { api } from "@/lib/api/client";
 import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,16 +29,14 @@ export default function WriteFeedbackPage({
   const { sessionId, targetId } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { status: sessionStatus } = useSession();
 
   const [category, setCategory] = useState("GENERAL");
   const [content, setContent] = useState("");
 
-  const { data: fbSession, isLoading } = useQuery({
-    queryKey: ["feedback-session", sessionId],
-    queryFn: () => api.get<any>(`/feedback-sessions/${sessionId}`),
-    enabled: sessionStatus === "authenticated",
-  });
+  const { data: fbSession, isLoading, isReady } = useAuthenticatedQuery<any>(
+    ["feedback-session", sessionId],
+    `/feedback-sessions/${sessionId}`
+  );
 
   const target = fbSession?.targets?.find((t: any) => t.id === targetId);
 
@@ -58,7 +56,7 @@ export default function WriteFeedbackPage({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (sessionStatus === "loading" || isLoading) return <LoadingState rows={3} />;
+  if (!isReady || isLoading) return <LoadingState rows={3} />;
   if (!fbSession || !target) return null;
 
   return (

@@ -6,6 +6,8 @@ vi.mock("@/lib/prisma", () => ({
     reviewCycle: { create: vi.fn(), update: vi.fn() },
     reviewAssignment: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     review: { update: vi.fn(), findMany: vi.fn() },
+    reviewResponse: { findMany: vi.fn() },
+    user: { findMany: vi.fn() },
   },
 }));
 
@@ -13,6 +15,12 @@ vi.mock("@/lib/services/notification.service", () => ({
   notificationService: {
     create: vi.fn(),
     createMany: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/services/audit-log.service", () => ({
+  auditLogService: {
+    log: vi.fn(),
   },
 }));
 
@@ -30,7 +38,9 @@ describe("ReviewService", () => {
       vi.mocked(prisma.reviewCycle.create).mockResolvedValue({ id: "cycle-1", ...data } as any);
 
       const result = await reviewService.createCycle(data);
-      expect(prisma.reviewCycle.create).toHaveBeenCalledWith({ data });
+      expect(prisma.reviewCycle.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ name: "2024 Q1" }),
+      });
       expect(result.id).toBe("cycle-1");
     });
   });
@@ -66,9 +76,14 @@ describe("ReviewService", () => {
 
   describe("submitReview", () => {
     it("평가를 제출하고 대상자에게 알림을 보낸다", async () => {
+      vi.mocked(prisma.reviewResponse.findMany).mockResolvedValue([
+        { rating: 4 },
+        { rating: 5 },
+      ] as any);
       vi.mocked(prisma.review.update).mockResolvedValue({
         id: "review-1",
         assignmentId: "assign-1",
+        authorId: "user-1",
         targetId: "user-2",
         target: { name: "대상자" },
         author: { name: "작성자" },
@@ -82,11 +97,36 @@ describe("ReviewService", () => {
       expect(prisma.review.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "review-1" },
-          data: { status: "SUBMITTED" },
+          data: { status: "SUBMITTED", overallRating: 4.5 },
         })
       );
       expect(notificationService.create).toHaveBeenCalledWith(
         expect.objectContaining({ userId: "user-2", type: "REVIEW_SUBMITTED" })
+      );
+    });
+
+    it("RATING 응답이 없으면 overallRating을 null로 설정한다", async () => {
+      vi.mocked(prisma.reviewResponse.findMany).mockResolvedValue([
+        { rating: null },
+      ] as any);
+      vi.mocked(prisma.review.update).mockResolvedValue({
+        id: "review-1",
+        assignmentId: "assign-1",
+        authorId: "user-1",
+        targetId: "user-2",
+        target: { name: "대상자" },
+        author: { name: "작성자" },
+        cycle: { name: "2024 Q1" },
+        cycleId: "cycle-1",
+      } as any);
+      vi.mocked(prisma.reviewAssignment.update).mockResolvedValue({} as any);
+
+      await reviewService.submitReview("review-1");
+
+      expect(prisma.review.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { status: "SUBMITTED", overallRating: null },
+        })
       );
     });
   });

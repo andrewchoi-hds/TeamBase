@@ -50,4 +50,28 @@ export const auditLogService = {
     ]);
     return { logs, total };
   },
+
+  async list(filters: {
+    action?: AuditAction;
+    entityType?: AuditEntityType;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const { action, entityType, limit = 50, offset = 0 } = filters;
+    const where: Prisma.AuditLogWhereInput = {};
+    if (action) where.action = action;
+    if (entityType) where.entityType = entityType;
+
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+    return { logs, total };
+  },
 };

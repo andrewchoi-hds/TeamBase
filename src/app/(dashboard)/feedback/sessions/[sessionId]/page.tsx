@@ -1,9 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
-import { api } from "@/lib/api/client";
+import { useAuthenticatedQuery } from "@/hooks/use-authenticated-query";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -20,7 +18,10 @@ const ONBOARDING_KEY = "feedback-session-onboarding-seen";
 export default function FeedbackSessionDetailPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: fbSession, isLoading, session, isReady } = useAuthenticatedQuery<any>(
+    ["feedback-session", sessionId],
+    `/feedback-sessions/${sessionId}`
+  );
   const userId = session?.user?.id;
   const [showGuide, setShowGuide] = useState(false);
 
@@ -36,13 +37,7 @@ export default function FeedbackSessionDetailPage({ params }: { params: Promise<
     localStorage.setItem(ONBOARDING_KEY, "true");
   };
 
-  const { data: fbSession, isLoading } = useQuery({
-    queryKey: ["feedback-session", sessionId],
-    queryFn: () => api.get<any>(`/feedback-sessions/${sessionId}`),
-    enabled: sessionStatus === "authenticated",
-  });
-
-  if (sessionStatus === "loading" || isLoading) return <LoadingState rows={4} />;
+  if (!isReady || isLoading) return <LoadingState rows={4} />;
   if (!fbSession) return null;
 
   const myTargets = fbSession.targets?.filter((t: any) => t.userId !== userId) ?? [];

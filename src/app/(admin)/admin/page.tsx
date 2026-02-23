@@ -44,6 +44,7 @@ export default function AdminDashboardPage() {
           { title: "평가 주기 관리", href: "/admin/review-cycles", desc: "평가 주기 생성, 배정 관리" },
           { title: "평가 템플릿", href: "/admin/templates", desc: "평가 항목 템플릿 설정" },
           { title: "피드백 세션", href: "/admin/feedback-sessions", desc: "피드백 세션 생성/관리" },
+          { title: "감사 로그", href: "/admin/audit-logs", desc: "시스템 활동 이력 조회" },
           { title: "시스템 설정", href: "/admin/system", desc: "시스템 환경 설정" },
         ].map((item) => (
           <Link key={item.href} href={item.href}>

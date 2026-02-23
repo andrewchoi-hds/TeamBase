@@ -21,12 +21,14 @@ describe("StatCard", () => {
 
   it("양수 트렌드를 표시한다", () => {
     render(<StatCard title="성장" value={100} trend={{ value: 15, label: "지난 달 대비" }} />);
-    expect(screen.getByText("+15% 지난 달 대비")).toBeInTheDocument();
+    expect(screen.getByText("+15%")).toBeInTheDocument();
+    expect(screen.getByText("지난 달 대비")).toBeInTheDocument();
   });
 
   it("음수 트렌드를 표시한다", () => {
     render(<StatCard title="감소" value={50} trend={{ value: -5, label: "지난 달 대비" }} />);
-    expect(screen.getByText("-5% 지난 달 대비")).toBeInTheDocument();
+    expect(screen.getByText("-5%")).toBeInTheDocument();
+    expect(screen.getByText("지난 달 대비")).toBeInTheDocument();
   });
 
   it("아이콘을 렌더링한다", () => {
