@@ -125,7 +125,7 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
               평가 시작
             </Button>
           )}
-          {cycle.status === "ACTIVE" && (
+          {(cycle.status === "ACTIVE" || cycle.status === "COMPLETED") && (
             <Button asChild variant="outline">
               <Link href={`/reviews/${cycleId}/results`}>
                 <BarChart3 className="mr-2 h-4 w-4" />
@@ -259,8 +259,20 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
                     <span className="text-muted-foreground">→</span>
                     <span>{assignment.target.name}</span>
                     <Badge variant="outline" className="text-xs">{reviewTypeLabels[assignment.reviewType]}</Badge>
+                    {assignment.review?.overallRating != null && (
+                      <Badge variant="secondary" className="text-xs">
+                        {assignment.review.overallRating.toFixed(1)}점
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {assignment.status === "SUBMITTED" && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
+                        <Link href={`/reviews/${cycleId}/results/${assignment.target.id}`}>
+                          리포트
+                        </Link>
+                      </Button>
+                    )}
                     <StatusBadge status={assignment.status} />
                     {cycle.status === "DRAFT" && assignment.status === "PENDING" && (
                       <Button

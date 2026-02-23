@@ -16,7 +16,7 @@ async function handleGET(_req: NextRequest, { params }: { params: { id: string }
         include: {
           reviewer: { select: { id: true, name: true, position: true } },
           target: { select: { id: true, name: true, position: true } },
-          review: { select: { id: true, status: true } },
+          review: { select: { id: true, status: true, overallRating: true } },
         },
       },
       _count: { select: { reviews: true } },
