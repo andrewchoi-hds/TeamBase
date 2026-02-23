@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Calendar } from "lucide-react";
+import { ClipboardCheck, Calendar, Settings, BarChart3, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
@@ -32,16 +32,34 @@ interface Assignment {
   review?: { id: string; status: string } | null;
 }
 
-export default function ReviewsPage() {
-  const { status: sessionStatus } = useSession();
+interface ReviewCycle {
+  id: string;
+  name: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  _count?: { assignments: number; reviews: number };
+}
 
-  const { data: assignments, isLoading } = useQuery({
+export default function ReviewsPage() {
+  const { data: session, status: sessionStatus } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
+  // 일반 사용자: 내 배정 조회
+  const { data: assignments, isLoading: assignmentsLoading } = useQuery({
     queryKey: ["my-assignments"],
     queryFn: () => api.get<Assignment[]>("/reviews/my-assignments"),
-    enabled: sessionStatus === "authenticated",
+    enabled: sessionStatus === "authenticated" && !isAdmin,
   });
 
-  // 주기별 그룹핑
+  // 관리자: 전체 평가 주기 조회
+  const { data: cycles, isLoading: cyclesLoading } = useQuery({
+    queryKey: ["review-cycles"],
+    queryFn: () => api.get<ReviewCycle[]>("/review-cycles"),
+    enabled: sessionStatus === "authenticated" && isAdmin,
+  });
+
+  // 주기별 그룹핑 (일반 사용자)
   const groupedByCycle = useMemo(() => {
     if (!assignments) return [];
     const map = new Map<string, { cycle: Assignment["cycle"]; assignments: Assignment[] }>();
@@ -56,8 +74,79 @@ export default function ReviewsPage() {
     return Array.from(map.values());
   }, [assignments]);
 
-  if (sessionStatus === "loading" || isLoading) return <LoadingState rows={4} />;
+  const isLoading = sessionStatus === "loading" || (isAdmin ? cyclesLoading : assignmentsLoading);
+  if (isLoading) return <LoadingState rows={4} />;
 
+  // ===== 관리자 뷰 =====
+  if (isAdmin) {
+    return (
+      <div>
+        <PageHeader title="평가" description="평가 주기를 관리하고 진행 현황을 확인합니다.">
+          <Button asChild>
+            <Link href="/admin/review-cycles/new">새 평가 주기</Link>
+          </Button>
+        </PageHeader>
+
+        {!cycles?.length ? (
+          <EmptyState
+            icon={<ClipboardCheck className="h-12 w-12" />}
+            title="평가 주기가 없습니다"
+            description="새 평가 주기를 생성하여 시작하세요."
+          />
+        ) : (
+          <div className="space-y-4">
+            {cycles.map((cycle) => {
+              const assignCount = cycle._count?.assignments ?? 0;
+              const reviewCount = cycle._count?.reviews ?? 0;
+
+              return (
+                <Card key={cycle.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{cycle.name}</h3>
+                          <StatusBadge status={cycle.status} />
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(new Date(cycle.startDate), "yy.M.d", { locale: ko })}
+                            {" ~ "}
+                            {format(new Date(cycle.endDate), "yy.M.d", { locale: ko })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            배정 {assignCount}건
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <BarChart3 className="h-3.5 w-3.5" />
+                            제출 {reviewCount}건
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/reviews/${cycle.id}`}>상세 보기</Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                          <Link href="/admin/review-cycles">
+                            <Settings className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ===== 일반 사용자 뷰 =====
   return (
     <div>
       <PageHeader title="평가" description="배정된 평가를 확인하고 작성하세요." />
