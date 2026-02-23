@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/common/loading-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { TemplateEditor } from "@/components/review/template-editor";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, FileText, MoreVertical, Pencil, Copy, Trash2 } from "lucide-react";
+import { QUESTION_TYPES } from "@/lib/types/review-template";
 
 export default function ReviewTemplatesPage() {
   const queryClient = useQueryClient();
@@ -144,7 +146,16 @@ export default function ReviewTemplatesPage() {
                   <div key={cat.id} className="mb-2">
                     <p className="text-sm font-medium">{cat.name}</p>
                     <ul className="text-xs text-muted-foreground ml-3">
-                      {cat.criteria?.map((c: any) => <li key={c.id}>- {c.name}</li>)}
+                      {cat.criteria?.map((c: any) => (
+                        <li key={c.id} className="flex items-center gap-1">
+                          - {c.name}
+                          {c.questionType && c.questionType !== "RATING" && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+                              {QUESTION_TYPES[c.questionType as keyof typeof QUESTION_TYPES]?.label ?? c.questionType}
+                            </Badge>
+                          )}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 ))}
@@ -165,7 +176,13 @@ export default function ReviewTemplatesPage() {
               initialName={editTarget.name}
               initialCategories={editTarget.categories?.map((cat: any) => ({
                 name: cat.name,
-                criteria: cat.criteria?.map((c: any) => ({ name: c.name, description: c.description ?? "" })) ?? [],
+                criteria: cat.criteria?.map((c: any) => ({
+                  name: c.name,
+                  description: c.description ?? "",
+                  questionType: c.questionType ?? "RATING",
+                  isRequired: c.isRequired ?? true,
+                  options: c.options ?? undefined,
+                })) ?? [],
               }))}
               onSubmit={(data) => editMutation.mutate({ id: editTarget.id, data })}
               isSubmitting={editMutation.isPending}

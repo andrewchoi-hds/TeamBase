@@ -5,11 +5,14 @@ export interface ReviewData {
   assignment: { reviewType: string };
   author: { id: string; name: string };
   responses: {
-    rating: number;
+    rating: number | null;
     comment: string | null;
+    textValue?: string | null;
+    selectedOptions?: string[] | null;
     criterion: {
       id: string;
       name: string;
+      questionType?: string;
       category: { id: string; name: string };
     };
   }[];
@@ -43,6 +46,11 @@ export interface AggregatedReport {
   weaknesses: CriterionScore[];
 }
 
+/** RATING 유형 응답만 필터 (null rating 제외) */
+function ratingResponses(responses: ReviewData["responses"]) {
+  return responses.filter((resp) => resp.rating != null);
+}
+
 export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   if (reviews.length === 0) {
     return {
@@ -66,10 +74,12 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     byType[type].count++;
     if (r.overallRating != null) {
       byType[type].ratings.push(r.overallRating);
-    } else if (r.responses.length > 0) {
-      // overallRating이 없으면 개별 응답 평균 사용
-      const avg = r.responses.reduce((sum, resp) => sum + resp.rating, 0) / r.responses.length;
-      byType[type].ratings.push(avg);
+    } else {
+      const rated = ratingResponses(r.responses);
+      if (rated.length > 0) {
+        const avg = rated.reduce((sum, resp) => sum + (resp.rating as number), 0) / rated.length;
+        byType[type].ratings.push(avg);
+      }
     }
   });
 
@@ -81,18 +91,18 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     };
   }
 
-  // Category scores by review type
+  // Category scores by review type (RATING responses only)
   const catMap: Record<string, Record<string, number[]>> = {};
   const catNames: Record<string, string> = {};
 
   reviews.forEach((r) => {
     const type = r.assignment.reviewType;
-    r.responses.forEach((resp) => {
+    ratingResponses(r.responses).forEach((resp) => {
       const catId = resp.criterion.category.id;
       catNames[catId] = resp.criterion.category.name;
       if (!catMap[catId]) catMap[catId] = {};
       if (!catMap[catId][type]) catMap[catId][type] = [];
-      catMap[catId][type].push(resp.rating);
+      catMap[catId][type].push(resp.rating as number);
     });
   });
 
@@ -120,20 +130,20 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     downward: cat.scores["DOWNWARD"] ?? 0,
   }));
 
-  // Per criterion: self vs others gap
+  // Per criterion: self vs others gap (RATING only)
   const critMap: Record<string, { selfRatings: number[]; othersRatings: number[]; name: string; catName: string }> = {};
 
   reviews.forEach((r) => {
     const isSelf = r.assignment.reviewType === "SELF";
-    r.responses.forEach((resp) => {
+    ratingResponses(r.responses).forEach((resp) => {
       const critId = resp.criterion.id;
       if (!critMap[critId]) {
         critMap[critId] = { selfRatings: [], othersRatings: [], name: resp.criterion.name, catName: resp.criterion.category.name };
       }
       if (isSelf) {
-        critMap[critId].selfRatings.push(resp.rating);
+        critMap[critId].selfRatings.push(resp.rating as number);
       } else {
-        critMap[critId].othersRatings.push(resp.rating);
+        critMap[critId].othersRatings.push(resp.rating as number);
       }
     });
   });
@@ -169,7 +179,7 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   const strengths = sorted.slice(0, 3);
   const weaknesses = sorted.slice(-3).reverse();
 
-  // 전체 평균 점수 계산 (overallRating 우선, 없으면 개별 응답 평균으로 폴백)
+  // 전체 평균 점수 계산 (overallRating 우선, 없으면 RATING 응답 평균으로 폴백)
   const overallRatings = reviews
     .filter((r) => r.overallRating != null)
     .map((r) => r.overallRating as number);
@@ -178,8 +188,7 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   if (overallRatings.length > 0) {
     overallAvgScore = overallRatings.reduce((a, b) => a + b, 0) / overallRatings.length;
   } else {
-    // overallRating이 없으면 모든 개별 응답 rating의 평균 사용
-    const allResponseRatings = reviews.flatMap((r) => r.responses.map((resp) => resp.rating));
+    const allResponseRatings = reviews.flatMap((r) => ratingResponses(r.responses).map((resp) => resp.rating as number));
     overallAvgScore = allResponseRatings.length > 0
       ? allResponseRatings.reduce((a, b) => a + b, 0) / allResponseRatings.length
       : 0;

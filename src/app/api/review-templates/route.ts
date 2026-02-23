@@ -38,10 +38,13 @@ async function handlePOST(req: NextRequest) {
           weight: cat.weight ?? 1.0,
           order: cat.order ?? i,
           criteria: {
-            create: cat.criteria?.map((c: { name: string; description?: string; order?: number }, j: number) => ({
+            create: cat.criteria?.map((c: { name: string; description?: string; order?: number; questionType?: string; options?: any; isRequired?: boolean }, j: number) => ({
               name: c.name,
               description: c.description,
               order: c.order ?? j,
+              questionType: c.questionType ?? "RATING",
+              options: c.options ?? undefined,
+              isRequired: c.isRequired ?? true,
             })) ?? [],
           },
         })) ?? [],

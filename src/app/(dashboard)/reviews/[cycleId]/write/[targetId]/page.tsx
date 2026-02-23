@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { use, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -11,39 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DevelopmentContextPanel } from "@/components/review/development-context-panel";
+import { QuestionRenderer } from "@/components/review/question-renderer";
+import { validateResponse, QUESTION_TYPES, type ResponseValue } from "@/lib/types/review-template";
+import type { QuestionType } from "@prisma/client";
 
-function RatingScale({ value, onChange, label, hasError }: { value: number; onChange: (v: number) => void; label?: string; hasError?: boolean }) {
-  return (
-    <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          role="radio"
-          aria-checked={n === value}
-          aria-label={`${n}점`}
-          onClick={() => onChange(n)}
-          className={cn(
-            "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
-            n <= value
-              ? "bg-primary text-primary-foreground border-primary"
-              : "hover:bg-accent",
-            hasError && value === 0 && "border-destructive"
-          )}
-        >
-          {n}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export default function WriteReviewPage({ params }: { params: { cycleId: string; targetId: string } }) {
-  const { cycleId, targetId } = params;
+export default function WriteReviewPage({ params }: { params: Promise<{ cycleId: string; targetId: string }> }) {
+  const { cycleId, targetId } = use(params);
   const router = useRouter();
   const { saveDraft, getDraft, removeDraft } = useReviewStore();
   const criterionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -57,7 +35,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     (a: any) => a.target.id === targetId
   );
 
-  const [responses, setResponses] = useState<Record<string, { rating: number; comment: string }>>({});
+  const [responses, setResponses] = useState<Record<string, ResponseValue>>({});
   const [overallComment, setOverallComment] = useState("");
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [invalidCriteria, setInvalidCriteria] = useState<Set<string>>(new Set());
@@ -76,14 +54,32 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     }
   }, [assignment, getDraft]);
 
+  const buildResponseArray = useCallback(() => {
+    const categories = cycle?.template?.categories ?? [];
+    return Object.entries(responses).map(([criterionId, r]) => {
+      // Find the criterion to get questionType
+      let questionType: QuestionType = "RATING";
+      for (const cat of categories) {
+        const found = cat.criteria.find((c: any) => c.id === criterionId);
+        if (found) {
+          questionType = found.questionType ?? "RATING";
+          break;
+        }
+      }
+      return {
+        criterionId,
+        rating: questionType === "RATING" ? (r.rating ?? null) : null,
+        comment: r.comment || null,
+        textValue: r.textValue || null,
+        selectedOptions: r.selectedOptions?.length ? r.selectedOptions : null,
+      };
+    });
+  }, [responses, cycle]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!assignment) return;
-      const responseArray = Object.entries(responses).map(([criterionId, r]) => ({
-        criterionId,
-        rating: r.rating,
-        comment: r.comment,
-      }));
+      const responseArray = buildResponseArray();
 
       if (reviewId) {
         return api.patch(`/reviews/${reviewId}`, { overallComment, responses: responseArray });
@@ -126,15 +122,18 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     };
   }, [responses, overallComment, assignment, saveDraft]);
 
-  // 별점 필수 검증
-  const validateRatings = useCallback((): boolean => {
+  // 유형별 검증
+  const validateAllResponses = useCallback((): boolean => {
     const categories = cycle?.template?.categories ?? [];
     const missing: string[] = [];
 
     for (const category of categories) {
       for (const criterion of category.criteria) {
-        const rating = responses[criterion.id]?.rating ?? 0;
-        if (rating === 0) {
+        const questionType: QuestionType = criterion.questionType ?? "RATING";
+        const isRequired: boolean = criterion.isRequired ?? true;
+        const value = responses[criterion.id];
+
+        if (!validateResponse(questionType, isRequired, value)) {
           missing.push(criterion.id);
         }
       }
@@ -142,8 +141,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
 
     if (missing.length > 0) {
       setInvalidCriteria(new Set(missing));
-      toast.error(`${missing.length}개 항목의 평가 점수를 선택해주세요.`);
-      // 첫 번째 미선택 항목으로 스크롤
+      toast.error(`${missing.length}개 필수 항목을 완성해주세요.`);
       const firstMissing = missing[0];
       const el = criterionRefs.current[firstMissing];
       if (el) {
@@ -158,8 +156,8 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!validateRatings()) {
-        throw new Error("모든 평가 항목의 점수를 선택해주세요.");
+      if (!validateAllResponses()) {
+        throw new Error("필수 항목을 모두 완성해주세요.");
       }
 
       if (!reviewId) {
@@ -175,7 +173,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
       router.push(`/reviews/${cycleId}`);
     },
     onError: (e: Error) => {
-      if (e.message !== "모든 평가 항목의 점수를 선택해주세요.") {
+      if (e.message !== "필수 항목을 모두 완성해주세요.") {
         toast.error(e.message);
       }
     },
@@ -204,6 +202,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
             <CardContent className="space-y-6">
               {category.criteria.map((criterion: any) => {
                 const hasError = invalidCriteria.has(criterion.id);
+                const questionType: QuestionType = criterion.questionType ?? "RATING";
                 return (
                   <div
                     key={criterion.id}
@@ -213,45 +212,43 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
                       hasError && "bg-destructive/5 ring-1 ring-destructive/20"
                     )}
                   >
-                    <div>
-                      <Label className="text-sm font-medium">{criterion.name}</Label>
-                      {criterion.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
-                      )}
-                      {hasError && (
-                        <p className="text-xs text-destructive mt-1">점수를 선택해주세요</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">
+                          {criterion.name}
+                          {!(criterion.isRequired ?? true) && (
+                            <span className="text-muted-foreground font-normal ml-1">(선택)</span>
+                          )}
+                        </Label>
+                        {criterion.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
+                        )}
+                        {hasError && (
+                          <p className="text-xs text-destructive mt-1">이 항목을 완성해주세요</p>
+                        )}
+                      </div>
+                      {questionType !== "RATING" && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {QUESTION_TYPES[questionType]?.label}
+                        </Badge>
                       )}
                     </div>
-                    <RatingScale
-                      label={`${criterion.name} 평가 점수`}
-                      value={responses[criterion.id]?.rating ?? 0}
+                    <QuestionRenderer
+                      criterionId={criterion.id}
+                      criterionName={criterion.name}
+                      questionType={questionType}
+                      options={criterion.options}
+                      value={responses[criterion.id] ?? {}}
                       hasError={hasError}
-                      onChange={(rating) => {
+                      onChange={(val) => {
                         hasInteracted.current = true;
-                        setResponses((prev) => ({
-                          ...prev,
-                          [criterion.id]: { ...prev[criterion.id], rating, comment: prev[criterion.id]?.comment ?? "" },
-                        }));
+                        setResponses((prev) => ({ ...prev, [criterion.id]: val }));
                         setInvalidCriteria((prev) => {
                           const next = new Set(prev);
                           next.delete(criterion.id);
                           return next;
                         });
                       }}
-                    />
-                    <Textarea
-                      id={`comment-${criterion.id}`}
-                      aria-label={`${criterion.name} 코멘트`}
-                      placeholder="코멘트 (선택)"
-                      value={responses[criterion.id]?.comment ?? ""}
-                      onChange={(e) => {
-                        hasInteracted.current = true;
-                        setResponses((prev) => ({
-                          ...prev,
-                          [criterion.id]: { ...prev[criterion.id], rating: prev[criterion.id]?.rating ?? 0, comment: e.target.value },
-                        }));
-                      }}
-                      rows={2}
                     />
                   </div>
                 );

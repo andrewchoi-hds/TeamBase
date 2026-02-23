@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { ResponseValue } from "@/lib/types/review-template";
 
 interface ReviewDraft {
   assignmentId: string;
-  responses: Record<string, { rating: number; comment: string }>;
+  responses: Record<string, ResponseValue>;
   overallComment: string;
   savedAt: string;
 }

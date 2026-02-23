@@ -63,14 +63,20 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
       await Promise.all(
         data.responses.map((resp: any) => {
           const prev: any = existingMap.get(resp.criterionId);
+          const respData = {
+            rating: resp.rating ?? null,
+            comment: resp.comment || null,
+            textValue: resp.textValue || null,
+            selectedOptions: resp.selectedOptions ?? undefined,
+          };
           if (prev) {
             return tx.reviewResponse.update({
               where: { id: prev.id },
-              data: { rating: resp.rating, comment: resp.comment },
+              data: respData,
             });
           }
           return tx.reviewResponse.create({
-            data: { reviewId: params.id, criterionId: resp.criterionId, rating: resp.rating, comment: resp.comment },
+            data: { reviewId: params.id, criterionId: resp.criterionId, ...respData },
           });
         })
       );

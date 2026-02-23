@@ -102,8 +102,10 @@ async function handlePOST(req: NextRequest) {
         data: responses.map((r: any) => ({
           reviewId: created.id,
           criterionId: r.criterionId,
-          rating: r.rating,
+          rating: r.rating ?? null,
           comment: r.comment || null,
+          textValue: r.textValue || null,
+          selectedOptions: r.selectedOptions ?? undefined,
         })),
       });
     }
