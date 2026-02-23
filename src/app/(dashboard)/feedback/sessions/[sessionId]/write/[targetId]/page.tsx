@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -24,9 +24,9 @@ const CATEGORIES = [
 export default function WriteFeedbackPage({
   params,
 }: {
-  params: { sessionId: string; targetId: string };
+  params: Promise<{ sessionId: string; targetId: string }>;
 }) {
-  const { sessionId, targetId } = params;
+  const { sessionId, targetId } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { status: sessionStatus } = useSession();

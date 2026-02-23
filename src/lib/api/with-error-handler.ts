@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RouteHandler = (req: NextRequest, context: any) => Promise<NextResponse>;
+type InternalHandler = (req: NextRequest, context: any) => Promise<NextResponse>;
 
-export function withErrorHandler(handler: RouteHandler): RouteHandler {
+export function withErrorHandler(handler: InternalHandler): InternalHandler {
   return async (req, context) => {
     try {
-      // Next.js 14.2+: params가 Promise일 수 있으므로 미리 resolve
+      // Next.js 15: params는 항상 Promise이므로 resolve 후 핸들러에 전달
       if (context?.params && typeof context.params.then === "function") {
         context = { ...context, params: await context.params };
       }

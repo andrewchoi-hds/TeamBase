@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api/client";
@@ -17,6 +18,7 @@ import { GradeBadge } from "@/components/review/grade-badge";
 import { GoalCard } from "@/components/development-goal/goal-card";
 import { CreateGoalDialog } from "@/components/development-goal/create-goal-dialog";
 import { Target } from "lucide-react";
+import { ResponseDisplay } from "@/components/review/response-display";
 import type { AggregatedReport } from "@/lib/utils/review-aggregation";
 
 const reviewTypeLabels: Record<string, string> = {
@@ -26,8 +28,8 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function MemberReviewResultPage({ params }: { params: { cycleId: string; memberId: string } }) {
-  const { cycleId, memberId } = params;
+export default function MemberReviewResultPage({ params }: { params: Promise<{ cycleId: string; memberId: string }> }) {
+  const { cycleId, memberId } = use(params);
 
   const { data: session } = useSession();
   const isOwnReport = session?.user?.id === memberId;
@@ -183,19 +185,18 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
                   </CardHeader>
                   <CardContent>
                     {review.responses?.map((resp: any, i: number) => (
-                      <div key={resp.id || i}>
-                        <div className="flex items-center justify-between py-2">
+                      <div key={resp.id || i} className="py-2">
+                        <div className="flex items-center justify-between mb-1">
                           <span className="text-sm">{resp.criterion?.name}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="flex gap-0.5">
-                              {[1,2,3,4,5].map(n => (
-                                <div key={n} className={`h-2 w-4 rounded-sm ${n <= resp.rating ? "bg-primary" : "bg-muted"}`} />
-                              ))}
-                            </div>
-                            <span className="text-sm font-medium w-6 text-right">{resp.rating}</span>
-                          </div>
                         </div>
-                        {resp.comment && <p className="text-sm text-muted-foreground mb-2 pl-2 border-l-2">{resp.comment}</p>}
+                        <ResponseDisplay
+                          questionType={resp.criterion?.questionType ?? "RATING"}
+                          rating={resp.rating}
+                          comment={resp.comment}
+                          textValue={resp.textValue}
+                          selectedOptions={resp.selectedOptions}
+                          options={resp.criterion?.options}
+                        />
                       </div>
                     ))}
                     {review.overallComment && (

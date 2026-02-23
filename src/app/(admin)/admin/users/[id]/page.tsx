@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -14,8 +15,8 @@ import { History, Mail, Building2, User } from "lucide-react";
 
 const roleLabels: Record<string, string> = { ADMIN: "관리자", MANAGER: "팀장", MEMBER: "팀원" };
 
-export default function AdminUserDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { data: member, isLoading } = useQuery({
     queryKey: ["user", id],
     queryFn: () => api.get<any>(`/users/${id}`),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { use, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api/client";
@@ -17,8 +17,8 @@ import { useRouter } from "next/navigation";
 
 const ONBOARDING_KEY = "feedback-session-onboarding-seen";
 
-export default function FeedbackSessionDetailPage({ params }: { params: { sessionId: string } }) {
-  const { sessionId } = params;
+export default function FeedbackSessionDetailPage({ params }: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = use(params);
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const userId = session?.user?.id;

@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
@@ -13,8 +14,8 @@ import { ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { AggregatedReport } from "@/lib/utils/review-aggregation";
 
-export default function ReviewResultsPage({ params }: { params: { cycleId: string } }) {
-  const { cycleId } = params;
+export default function ReviewResultsPage({ params }: { params: Promise<{ cycleId: string }> }) {
+  const { cycleId } = use(params);
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
     queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
