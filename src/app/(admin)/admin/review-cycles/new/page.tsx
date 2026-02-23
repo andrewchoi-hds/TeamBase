@@ -90,7 +90,7 @@ export default function NewReviewCyclePage() {
     enabled: currentStep >= 4 && !skipAssignment,
   });
 
-  const allUsers = users ?? [];
+  const allUsers = useMemo(() => users ?? [], [users]);
 
   const selectedUsers = useMemo(() => {
     if (targetScope === "all") return allUsers;

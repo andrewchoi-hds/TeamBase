@@ -39,7 +39,7 @@ export default function NewFeedbackSessionPage() {
     enabled: currentStep >= 1,
   });
 
-  const allUsers = users ?? [];
+  const allUsers = useMemo(() => users ?? [], [users]);
 
   const usersByDept = useMemo(() => {
     const map: Record<string, { name: string; users: any[] }> = {};

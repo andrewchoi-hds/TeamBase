@@ -26,7 +26,7 @@ export function createNextRequest(
     init.body = JSON.stringify(options.body);
   }
 
-  return new NextRequest(fullUrl, init);
+  return new NextRequest(fullUrl, init as any);
 }
 
 export async function parseJsonResponse(response: Response) {

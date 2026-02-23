@@ -39,7 +39,7 @@ export function DevelopmentContextPanel({ targetUserId, defaultExpanded = false 
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hasBeenExpanded, setHasBeenExpanded] = useState(defaultExpanded);
 
-  const { data: context, isLoading } = useQuery({
+  const { data: context } = useQuery({
     queryKey: ["development-context", targetUserId],
     queryFn: () => api.get<DevelopmentContext>(`/users/${targetUserId}/development-context`),
     enabled: !!targetUserId && hasBeenExpanded,
