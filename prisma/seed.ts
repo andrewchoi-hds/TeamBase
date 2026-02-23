@@ -1,4 +1,4 @@
-import { PrismaClient, Role, ReviewType, ReviewStatus, FeedbackCategory } from "@prisma/client";
+import { PrismaClient, Role, ReviewType, ReviewStatus, FeedbackCategory, QuestionType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -215,6 +215,155 @@ async function main() {
   console.log(`✅ 평가 템플릿 생성 완료 (카테고리 ${template.categories.length}개, 항목 ${allCriteria.length}개)`);
 
   // ==========================================
+  // 3-2. Multi-type Template (다중 유형 평가)
+  // ==========================================
+  const multiTypeTemplate = await prisma.reviewTemplate.create({
+    data: {
+      name: "다중 유형 종합 평가",
+      description: "평점/서술형/단일선택/복수선택 4가지 유형을 모두 포함하는 종합 평가 템플릿",
+      categories: {
+        create: [
+          {
+            name: "성과 평가",
+            weight: 1.0,
+            order: 0,
+            criteria: {
+              create: [
+                {
+                  name: "업무 달성도",
+                  description: "이번 분기 목표 대비 달성률을 평가합니다",
+                  order: 0,
+                  questionType: QuestionType.RATING,
+                  isRequired: true,
+                },
+                {
+                  name: "업무 품질",
+                  description: "산출물의 완성도와 정확성을 평가합니다",
+                  order: 1,
+                  questionType: QuestionType.RATING,
+                  isRequired: true,
+                },
+                {
+                  name: "핵심 성과 기술",
+                  description: "이번 분기 가장 중요한 성과를 구체적으로 기술해주세요",
+                  order: 2,
+                  questionType: QuestionType.TEXT,
+                  isRequired: true,
+                },
+              ],
+            },
+          },
+          {
+            name: "역량 평가",
+            weight: 1.0,
+            order: 1,
+            criteria: {
+              create: [
+                {
+                  name: "협업 수준 평가",
+                  description: "팀원과의 협업 수준을 가장 잘 나타내는 항목을 선택하세요",
+                  order: 0,
+                  questionType: QuestionType.SINGLE_CHOICE,
+                  isRequired: true,
+                  options: {
+                    choices: [
+                      { label: "탁월함 - 적극적으로 협업을 주도하고 팀 시너지를 만듦", value: "excellent" },
+                      { label: "우수함 - 팀원과 원활하게 소통하고 협력함", value: "good" },
+                      { label: "보통 - 요청 시 협업에 참여함", value: "average" },
+                      { label: "미흡 - 개인 업무에만 집중하는 경향", value: "poor" },
+                    ],
+                  },
+                },
+                {
+                  name: "강점 역량 (복수 선택)",
+                  description: "해당 팀원의 강점이라고 생각하는 역량을 모두 선택하세요",
+                  order: 1,
+                  questionType: QuestionType.MULTI_CHOICE,
+                  isRequired: true,
+                  options: {
+                    choices: [
+                      { label: "기술적 전문성", value: "technical" },
+                      { label: "커뮤니케이션", value: "communication" },
+                      { label: "리더십", value: "leadership" },
+                      { label: "문제 해결력", value: "problem_solving" },
+                      { label: "창의성", value: "creativity" },
+                      { label: "시간 관리", value: "time_management" },
+                    ],
+                  },
+                },
+                {
+                  name: "커뮤니케이션 역량",
+                  description: "의사소통의 명확성과 효율성을 평가합니다",
+                  order: 2,
+                  questionType: QuestionType.RATING,
+                  isRequired: true,
+                },
+              ],
+            },
+          },
+          {
+            name: "성장 및 피드백",
+            weight: 0.8,
+            order: 2,
+            criteria: {
+              create: [
+                {
+                  name: "성장 제안",
+                  description: "이 팀원이 더 성장하기 위해 필요한 점을 자유롭게 작성해주세요",
+                  order: 0,
+                  questionType: QuestionType.TEXT,
+                  isRequired: false,
+                },
+                {
+                  name: "추천 성장 방향 (복수 선택)",
+                  description: "이 팀원에게 추천하는 성장 방향을 모두 선택하세요",
+                  order: 1,
+                  questionType: QuestionType.MULTI_CHOICE,
+                  isRequired: false,
+                  options: {
+                    choices: [
+                      { label: "기술 심화 학습", value: "deep_tech" },
+                      { label: "리더십/매니지먼트", value: "leadership" },
+                      { label: "프레젠테이션/발표력", value: "presentation" },
+                      { label: "프로젝트 관리", value: "project_mgmt" },
+                      { label: "비즈니스 이해도", value: "business" },
+                    ],
+                  },
+                },
+                {
+                  name: "종합 역량 등급",
+                  description: "전반적인 역량 수준을 하나만 선택하세요",
+                  order: 2,
+                  questionType: QuestionType.SINGLE_CHOICE,
+                  isRequired: true,
+                  options: {
+                    choices: [
+                      { label: "S - 기대를 크게 초과", value: "S" },
+                      { label: "A - 기대를 초과", value: "A" },
+                      { label: "B - 기대에 부합", value: "B" },
+                      { label: "C - 기대에 미달", value: "C" },
+                      { label: "D - 크게 미달", value: "D" },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    include: {
+      categories: {
+        include: { criteria: true },
+        orderBy: { order: "asc" },
+      },
+    },
+  });
+
+  const multiCriteria = multiTypeTemplate.categories.flatMap((c) => c.criteria);
+  console.log(`✅ 다중 유형 평가 템플릿 생성 완료 (카테고리 ${multiTypeTemplate.categories.length}개, 항목 ${multiCriteria.length}개)`);
+
+  // ==========================================
   // 4. Review Cycle #1 — 완료된 평가 (결과 확인용)
   // ==========================================
   const completedCycle = await prisma.reviewCycle.create({
@@ -324,6 +473,229 @@ async function main() {
   );
 
   console.log("✅ 완료된 평가 주기 생성 (리뷰 9건, 제출 완료)");
+
+  // ==========================================
+  // 4-2. Review Cycle — 다중 유형 완료 평가 (결과 확인용)
+  // ==========================================
+  const multiCompletedCycle = await prisma.reviewCycle.create({
+    data: {
+      name: "2025년 하반기 종합 평가",
+      description: "다중 유형(평점/서술/선택) 종합 평가 (완료)",
+      status: "COMPLETED",
+      startDate: new Date("2025-07-01"),
+      endDate: new Date("2025-08-15"),
+      templateId: multiTypeTemplate.id,
+    },
+  });
+
+  // Helper: 다중 유형 리뷰 생성
+  async function createMultiTypeReview(
+    cycleId: string,
+    reviewerId: string,
+    targetId: string,
+    reviewType: ReviewType,
+    responseData: {
+      rating?: number | null;
+      comment?: string;
+      textValue?: string;
+      selectedOptions?: string[];
+    }[],
+    overallComment: string,
+  ) {
+    const assignment = await prisma.reviewAssignment.create({
+      data: { cycleId, reviewerId, targetId, reviewType, status: "SUBMITTED" },
+    });
+
+    // RATING 응답만 평균
+    const ratingValues = responseData
+      .map((r) => r.rating)
+      .filter((r): r is number => r != null && r > 0);
+    const overallRating = ratingValues.length > 0
+      ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
+      : null;
+
+    const review = await prisma.review.create({
+      data: {
+        assignmentId: assignment.id,
+        cycleId,
+        authorId: reviewerId,
+        targetId,
+        status: ReviewStatus.SUBMITTED,
+        overallRating,
+        overallComment,
+      },
+    });
+
+    for (let i = 0; i < multiCriteria.length; i++) {
+      const rd = responseData[i];
+      if (!rd) continue;
+      await prisma.reviewResponse.create({
+        data: {
+          reviewId: review.id,
+          criterionId: multiCriteria[i].id,
+          rating: rd.rating ?? null,
+          comment: rd.comment ?? null,
+          textValue: rd.textValue ?? null,
+          selectedOptions: rd.selectedOptions ?? undefined,
+        },
+      });
+    }
+
+    return { assignment, review };
+  }
+
+  // --- dev1 (정개발) 다중 유형 리뷰 4건 ---
+  // 자기평가
+  await createMultiTypeReview(
+    multiCompletedCycle.id, dev1.id, dev1.id, ReviewType.SELF,
+    [
+      { rating: 4 },                                                         // 업무 달성도 (RATING)
+      { rating: 4 },                                                         // 업무 품질 (RATING)
+      { textValue: "백엔드 API 성능 최적화 프로젝트를 리드하여 응답 속도 40% 개선. Redis 캐싱 레이어 도입 및 쿼리 최적화를 담당했습니다." },  // 핵심 성과 기술 (TEXT)
+      { selectedOptions: ["good"] },                                          // 협업 수준 (SINGLE_CHOICE)
+      { selectedOptions: ["technical", "problem_solving"] },                  // 강점 역량 (MULTI_CHOICE)
+      { rating: 3 },                                                         // 커뮤니케이션 (RATING)
+      { textValue: "비개발 직군과의 소통에서 좀 더 쉬운 언어를 사용하도록 노력해야겠습니다." },  // 성장 제안 (TEXT)
+      { selectedOptions: ["presentation", "leadership"] },                    // 추천 성장 방향 (MULTI_CHOICE)
+      { selectedOptions: ["A"] },                                             // 종합 역량 등급 (SINGLE_CHOICE)
+    ],
+    "전반적으로 기술적 성과는 좋았으나 소프트 스킬 향상이 필요합니다.",
+  );
+
+  // 팀장 하향 평가
+  await createMultiTypeReview(
+    multiCompletedCycle.id, manager1.id, dev1.id, ReviewType.DOWNWARD,
+    [
+      { rating: 5 },
+      { rating: 5 },
+      { textValue: "성능 최적화 프로젝트에서 기대 이상의 성과를 달성했습니다. 기술 리더로서의 자질이 보입니다." },
+      { selectedOptions: ["excellent"] },
+      { selectedOptions: ["technical", "problem_solving", "creativity"] },
+      { rating: 3, comment: "기술적 설명 시 비전문가도 이해할 수 있게 개선 필요" },
+      { textValue: "팀 리딩 기회를 더 제공하여 리더십을 키워갈 필요가 있습니다. 주니어 멘토링에도 적극 참여하면 좋겠습니다." },
+      { selectedOptions: ["leadership", "presentation"] },
+      { selectedOptions: ["S"] },
+    ],
+    "기술적으로 팀 내 최고 수준입니다. 리더십 역량까지 키우면 테크 리드로 성장할 수 있습니다.",
+  );
+
+  // 동료 평가 (dev2)
+  await createMultiTypeReview(
+    multiCompletedCycle.id, dev2.id, dev1.id, ReviewType.PEER,
+    [
+      { rating: 5 },
+      { rating: 5 },
+      { textValue: "코드 리뷰에서 항상 상세한 피드백을 주시고, 성능 이슈 해결에 핵심적인 역할을 했습니다." },
+      { selectedOptions: ["excellent"] },
+      { selectedOptions: ["technical", "problem_solving", "communication"] },
+      { rating: 4 },
+      { textValue: "이미 뛰어난 실력이지만, 팀 외부 발표 경험을 쌓으면 더 좋을 것 같습니다." },
+      { selectedOptions: ["presentation", "business"] },
+      { selectedOptions: ["A"] },
+    ],
+    "함께 일하기 좋은 시니어 개발자입니다. 배울 점이 많습니다.",
+  );
+
+  // 동료 평가 (dev3)
+  await createMultiTypeReview(
+    multiCompletedCycle.id, dev3.id, dev1.id, ReviewType.PEER,
+    [
+      { rating: 4 },
+      { rating: 4 },
+      { textValue: "프론트엔드에서 필요한 API 설계를 항상 깔끔하게 해주셔서 협업이 수월합니다." },
+      { selectedOptions: ["good"] },
+      { selectedOptions: ["technical", "problem_solving"] },
+      { rating: 3 },
+      { textValue: "회의에서 의견을 좀 더 적극적으로 공유해주시면 좋겠습니다." },
+      { selectedOptions: ["presentation", "leadership"] },
+      { selectedOptions: ["A"] },
+    ],
+    "실력은 훌륭하지만 소통 측면에서 조금 더 적극적이면 좋겠습니다.",
+  );
+
+  // --- dev2 (최개발) 다중 유형 리뷰 2건 ---
+  await createMultiTypeReview(
+    multiCompletedCycle.id, dev2.id, dev2.id, ReviewType.SELF,
+    [
+      { rating: 3 },
+      { rating: 3 },
+      { textValue: "신규 기능 개발에서 React Query 도입을 주도했습니다. 아직 배울 것이 많지만 성장 중입니다." },
+      { selectedOptions: ["average"] },
+      { selectedOptions: ["communication", "creativity"] },
+      { rating: 4 },
+      { textValue: "테스트 작성 습관과 코드 아키텍처에 대한 이해를 더 키워야 합니다." },
+      { selectedOptions: ["deep_tech", "project_mgmt"] },
+      { selectedOptions: ["B"] },
+    ],
+    "아직 주니어이지만 꾸준히 성장하고 있습니다.",
+  );
+  await createMultiTypeReview(
+    multiCompletedCycle.id, manager1.id, dev2.id, ReviewType.DOWNWARD,
+    [
+      { rating: 3 },
+      { rating: 3, comment: "테스트 커버리지를 높이면 품질이 더 좋아질 것" },
+      { textValue: "새로운 기술 습득 속도가 빠르며 긍정적인 에너지로 팀 분위기를 좋게 만듭니다." },
+      { selectedOptions: ["good"] },
+      { selectedOptions: ["communication", "creativity", "time_management"] },
+      { rating: 4 },
+      { textValue: "독립적 문제 해결 역량과 체계적 테스트 습관을 키워야 합니다." },
+      { selectedOptions: ["deep_tech", "project_mgmt"] },
+      { selectedOptions: ["B"] },
+    ],
+    "성장 속도가 좋습니다. 체계적인 개발 습관을 더 다져가면 좋겠습니다.",
+  );
+
+  console.log("✅ 다중 유형 완료 평가 주기 생성 (리뷰 6건, 제출 완료)");
+
+  // ==========================================
+  // 4-3. Review Cycle — 다중 유형 진행중 (작성 테스트용)
+  // ==========================================
+  const multiActiveCycle = await prisma.reviewCycle.create({
+    data: {
+      name: "2026년 상반기 종합 평가",
+      description: "다중 유형 종합 평가 (진행중 — 4가지 질문 유형 작성 테스트용)",
+      status: "ACTIVE",
+      startDate: new Date("2026-02-01"),
+      endDate: new Date("2026-04-30"),
+      templateId: multiTypeTemplate.id,
+    },
+  });
+
+  // dev1: 자기 + 동료(dev2, dev3) + 상향(manager1)
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev1.id, targetId: dev1.id, reviewType: ReviewType.SELF, status: "PENDING" },
+  });
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev1.id, targetId: dev2.id, reviewType: ReviewType.PEER, status: "PENDING" },
+  });
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev1.id, targetId: dev3.id, reviewType: ReviewType.PEER, status: "PENDING" },
+  });
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev1.id, targetId: manager1.id, reviewType: ReviewType.UPWARD, status: "PENDING" },
+  });
+
+  // dev2: 자기 + 동료(dev1)
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev2.id, targetId: dev2.id, reviewType: ReviewType.SELF, status: "PENDING" },
+  });
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev2.id, targetId: dev1.id, reviewType: ReviewType.PEER, status: "PENDING" },
+  });
+
+  // dev3: 자기
+  await prisma.reviewAssignment.create({
+    data: { cycleId: multiActiveCycle.id, reviewerId: dev3.id, targetId: dev3.id, reviewType: ReviewType.SELF, status: "PENDING" },
+  });
+
+  // manager1: 하향 평가
+  for (const dev of devTeam) {
+    await prisma.reviewAssignment.create({
+      data: { cycleId: multiActiveCycle.id, reviewerId: manager1.id, targetId: dev.id, reviewType: ReviewType.DOWNWARD, status: "PENDING" },
+    });
+  }
+
+  console.log("✅ 다중 유형 진행중 평가 주기 생성 (배정 10건, 작성 대기)");
 
   // ==========================================
   // 5. Review Cycle #2 — 진행중 평가 (작성 대기)
@@ -771,13 +1143,19 @@ async function main() {
   console.log("  └────────────────────────────────────────────────┘\n");
   console.log("  데이터 요약:");
   console.log("  - 부서 3개 (개발/마케팅/디자인)");
-  console.log("  - 평가 주기 2개 (완료 1 + 진행중 1)");
-  console.log("  - 제출된 리뷰 9건 (완료 주기)");
-  console.log("  - 대기중 배정 15건 (진행중 주기)");
+  console.log("  - 평가 템플릿 2개 (기본 RATING + 다중 유형)");
+  console.log("  - 평가 주기 4개 (완료 2 + 진행중 2)");
+  console.log("  - 제출된 리뷰 15건 (완료 주기: 기본 9 + 다중유형 6)");
+  console.log("  - 대기중 배정 25건 (진행중 주기: 기본 15 + 다중유형 10)");
   console.log("  - 피드백 세션 2개 (기명 1 + 익명 1)");
   console.log("  - 피드백 응답 19건");
   console.log("  - 개선 목표 5건");
-  console.log("  - 알림 8건\n");
+  console.log("  - 알림 8건");
+  console.log("");
+  console.log("  🧪 다중 유형 테스트:");
+  console.log("  - '다중 유형 종합 평가' 템플릿: RATING(3) + TEXT(2) + SINGLE_CHOICE(2) + MULTI_CHOICE(2)");
+  console.log("  - '2025년 하반기 종합 평가' (완료): 결과 페이지에서 유형별 표시 확인");
+  console.log("  - '2026년 상반기 종합 평가' (진행중): member@teambase.com 로그인하여 작성 테스트\n");
 }
 
 main()

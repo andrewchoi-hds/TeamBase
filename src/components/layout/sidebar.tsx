@@ -69,8 +69,8 @@ function SidebarNav({ collapsed, onNavigate, variant = "desktop" }: { collapsed:
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
               isDark
                 ? isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-white/10"
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-white/[0.08]"
                 : isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -123,16 +123,16 @@ export function Sidebar() {
       {/* Desktop Sidebar - Dark slate background */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300",
+          "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 shadow-xl shadow-black/20",
           sidebarCollapsed ? "w-[68px]" : "w-[240px]"
         )}
       >
         <div className="flex h-16 items-center border-b border-sidebar-border px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white font-bold text-sm shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg shadow-orange-500/25">
               TB
             </div>
-            {!sidebarCollapsed && <span className="font-bold text-lg text-white tracking-tight">TeamBase</span>}
+            {!sidebarCollapsed && <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">TeamBase</span>}
           </Link>
         </div>
 
@@ -146,7 +146,7 @@ export function Sidebar() {
             onClick={toggleSidebar}
             aria-label={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
           >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <><ChevronLeft className="h-4 w-4" /><span className="ml-1 text-xs">접기</span></>}
           </Button>
         </div>
       </aside>

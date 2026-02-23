@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -40,8 +40,16 @@ const reviewTypeLabels: Record<string, string> = {
   DOWNWARD: "하향평가",
 };
 
-export default function ReviewCycleDetailPage({ params }: { params: { cycleId: string } }) {
-  const { cycleId } = params;
+const strategyLabels: Record<string, string> = {
+  self: "자기평가",
+  peer: "동료 상호평가",
+  downward: "하향평가",
+  upward: "상향평가",
+  department_peer: "부서별 동료평가",
+};
+
+export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cycleId: string }> }) {
+  const { cycleId } = use(params);
   const { data: session, status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -147,6 +155,18 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
           <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
             <span>기간: {format(new Date(cycle.startDate), "yyyy.M.d", { locale: ko })} ~ {format(new Date(cycle.endDate), "yyyy.M.d", { locale: ko })}</span>
           </div>
+          {cycle.assignmentRules?.strategies?.length > 0 && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+              <span className="text-xs text-muted-foreground shrink-0">배정 규칙:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {cycle.assignmentRules.strategies.map((s: string) => (
+                  <Badge key={s} variant="secondary" className="text-xs">
+                    {strategyLabels[s] ?? s}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

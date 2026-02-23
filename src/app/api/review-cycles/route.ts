@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
+import { getCurrentUser, unauthorized, forbidden, badRequest } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { reviewService } from "@/lib/services/review.service";
 
@@ -31,6 +31,18 @@ async function handlePOST(req: NextRequest) {
   if (user.role !== "ADMIN") return forbidden();
 
   const data = await req.json();
+
+  // templateId 유효성 검증
+  if (data.templateId) {
+    const templateExists = await prisma.reviewTemplate.findUnique({
+      where: { id: data.templateId },
+      select: { id: true },
+    });
+    if (!templateExists) {
+      return badRequest("선택한 템플릿이 존재하지 않습니다. 페이지를 새로고침 후 다시 시도해주세요.");
+    }
+  }
+
   const cycle = await prisma.reviewCycle.create({
     data: {
       name: data.name,

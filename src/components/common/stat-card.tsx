@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, description, icon, trend, className }: StatCardProps) {
   return (
-    <Card className={cn("group", className)}>
+    <Card className={cn("group border-t-2 border-t-primary/60 hover:border-t-primary card-hover", className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { api } from "@/lib/api/client";
 import { StepWizard } from "@/components/common/step-wizard";
@@ -56,6 +56,7 @@ const STEPS = [
 
 export default function NewReviewCyclePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(0);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
@@ -131,6 +132,7 @@ export default function NewReviewCyclePage() {
       return api.post("/review-cycles", payload);
     },
     onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycles"] });
       const count = result?.assignmentCount ?? 0;
       if (count > 0) {
         toast.success(`평가 주기가 생성되고 ${count}건이 배정되었습니다.`);

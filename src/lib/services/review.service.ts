@@ -120,13 +120,14 @@ export const reviewService = {
   },
 
   async submitReview(reviewId: string, userId?: string) {
-    // 개별 응답 점수의 평균으로 overallRating 자동 계산
+    // RATING 유형 응답만 평균으로 overallRating 자동 계산
     const responses = await prisma.reviewResponse.findMany({
       where: { reviewId },
       select: { rating: true },
     });
-    const overallRating = responses.length > 0
-      ? parseFloat((responses.reduce((sum, r) => sum + r.rating, 0) / responses.length).toFixed(2))
+    const ratedResponses = responses.filter((r) => r.rating != null);
+    const overallRating = ratedResponses.length > 0
+      ? parseFloat((ratedResponses.reduce((sum, r) => sum + (r.rating as number), 0) / ratedResponses.length).toFixed(2))
       : null;
 
     const review = await prisma.review.update({

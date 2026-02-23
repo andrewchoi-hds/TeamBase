@@ -117,6 +117,13 @@ model Department {
 // Review System
 // ============================================
 
+enum QuestionType {
+  RATING
+  TEXT
+  SINGLE_CHOICE
+  MULTI_CHOICE
+}
+
 enum ReviewCycleStatus {
   DRAFT
   ACTIVE
@@ -170,11 +177,14 @@ model ReviewCategory {
 }
 
 model ReviewCriterion {
-  id          String  @id @default(cuid())
-  categoryId  String
-  name        String
-  description String?
-  order       Int     @default(0)
+  id           String       @id @default(cuid())
+  categoryId   String
+  name         String
+  description  String?
+  order        Int          @default(0)
+  questionType QuestionType @default(RATING)
+  options      Json?
+  isRequired   Boolean      @default(true)
 
   category  ReviewCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   responses ReviewResponse[]
@@ -249,11 +259,13 @@ model Review {
 }
 
 model ReviewResponse {
-  id          String  @id @default(cuid())
-  reviewId    String
-  criterionId String
-  rating      Int
-  comment     String? @db.Text
+  id              String  @id @default(cuid())
+  reviewId        String
+  criterionId     String
+  rating          Int?
+  comment         String? @db.Text
+  textValue       String? @db.Text
+  selectedOptions Json?
 
   review    Review          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   criterion ReviewCriterion @relation(fields: [criterionId], references: [id])
