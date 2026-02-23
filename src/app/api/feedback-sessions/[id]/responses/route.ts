@@ -79,10 +79,12 @@ async function handlePOST(req: NextRequest, { params }: { params: { id: string }
     if (!isParticipant) return forbidden();
   }
 
+  // authorId는 항상 저장 (중복 체크 + 작성 현황 추적용)
+  // 익명 모드에서는 조회 API에서 author 정보를 숨김
   const response = await prisma.feedbackSessionResponse.create({
     data: {
       targetId,
-      authorId: session.mode === "NAMED" ? user.id : null,
+      authorId: user.id,
       category: category || "GENERAL",
       content: content.trim(),
     },

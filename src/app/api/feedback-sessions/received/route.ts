@@ -28,9 +28,9 @@ async function handleGET() {
     },
   });
 
-  // 기명 피드백: NAMED 세션의 모든 응답
+  // 기명 피드백: NAMED 세션의 모든 응답 (작성자 표시)
   const named: any[] = [];
-  // 무기명 피드백: ANONYMOUS 세션에서 임계값 이상일 때만 공개
+  // 무기명 피드백: ANONYMOUS 세션 (임계값 이상일 때만 공개, 작성자 숨김)
   const anonymous: { isVisible: boolean; count: number; minRequired: number; feedbacks: any[] } = {
     isVisible: false,
     count: 0,
@@ -53,7 +53,7 @@ async function handleGET() {
         });
       }
     } else {
-      // ANONYMOUS
+      // ANONYMOUS — 작성자 정보 제거
       anonymous.count += target.responses.length;
       anonymous.minRequired = session.minResponsesForVisibility;
 
@@ -66,6 +66,7 @@ async function handleGET() {
             content: r.content,
             createdAt: r.createdAt,
             sessionName: session.name,
+            // author 의도적으로 제외
           });
         }
       }

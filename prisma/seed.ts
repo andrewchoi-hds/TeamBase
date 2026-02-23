@@ -404,15 +404,41 @@ async function main() {
     },
   });
 
-  // Targets: dev1, dev2, dev3, manager1
+  // Targets: admin, dev1, dev2, dev3, manager1
   const namedTargets = await Promise.all(
-    [dev1, dev2, dev3, manager1].map((u) =>
+    [admin, dev1, dev2, dev3, manager1].map((u) =>
       prisma.feedbackSessionTarget.create({
         data: { sessionId: namedSession.id, userId: u.id },
       }),
     ),
   );
-  const [ntDev1, ntDev2, ntDev3, ntManager1] = namedTargets;
+  const [ntAdmin, ntDev1, ntDev2, ntDev3, ntManager1] = namedTargets;
+
+  // Responses for admin (김관리)
+  await prisma.feedbackSessionResponse.create({
+    data: {
+      targetId: ntAdmin.id,
+      authorId: manager1.id,
+      category: FeedbackCategory.STRENGTH,
+      content: "회사 전체의 기술 방향성을 명확하게 제시해주시고, 팀 간 협업이 원활하도록 중재해 주시는 점이 큰 도움이 됩니다.",
+    },
+  });
+  await prisma.feedbackSessionResponse.create({
+    data: {
+      targetId: ntAdmin.id,
+      authorId: manager2.id,
+      category: FeedbackCategory.STRENGTH,
+      content: "의사결정이 빠르고 합리적입니다. 어려운 상황에서도 냉정하게 판단하시는 모습이 인상적입니다.",
+    },
+  });
+  await prisma.feedbackSessionResponse.create({
+    data: {
+      targetId: ntAdmin.id,
+      authorId: dev1.id,
+      category: FeedbackCategory.IMPROVEMENT,
+      content: "현장 개발팀과의 소통 빈도가 조금 더 높아지면 좋겠습니다. 분기 1회 정도 개발팀 전체 미팅이 있으면 합니다.",
+    },
+  });
 
   // Responses for dev1 (정개발)
   await prisma.feedbackSessionResponse.create({
@@ -484,7 +510,7 @@ async function main() {
     },
   });
 
-  console.log("✅ 기명 피드백 세션 생성 (대상자 4명, 피드백 8건)");
+  console.log("✅ 기명 피드백 세션 생성 (대상자 5명, 피드백 11건)");
 
   // ==========================================
   // 7. Feedback Session #2 — 익명 (ACTIVE)
@@ -502,11 +528,23 @@ async function main() {
     },
   });
 
+  const anonTargetAdmin = await prisma.feedbackSessionTarget.create({
+    data: { sessionId: anonSession.id, userId: admin.id },
+  });
   const anonTarget1 = await prisma.feedbackSessionTarget.create({
     data: { sessionId: anonSession.id, userId: manager1.id },
   });
   const anonTarget2 = await prisma.feedbackSessionTarget.create({
     data: { sessionId: anonSession.id, userId: manager2.id },
+  });
+
+  // 익명 피드백 — admin 대상 (3건, visibility 충족)
+  await prisma.feedbackSessionResponse.createMany({
+    data: [
+      { targetId: anonTargetAdmin.id, authorId: manager1.id, category: FeedbackCategory.STRENGTH, content: "경영진으로서 기술 이해도가 높아 현실적인 의사결정이 가능합니다." },
+      { targetId: anonTargetAdmin.id, authorId: manager2.id, category: FeedbackCategory.IMPROVEMENT, content: "전사 공지사항이 좀 더 빈번하면 좋겠습니다. 월 1회 전체 타운홀 미팅을 제안합니다." },
+      { targetId: anonTargetAdmin.id, authorId: dev1.id, category: FeedbackCategory.GENERAL, content: "기술 투자에 대한 긍정적인 태도가 개발팀 사기에 큰 도움이 됩니다." },
+    ],
   });
 
   // 익명 피드백 — manager1 대상 (3건 이상이어야 보임)
@@ -526,7 +564,7 @@ async function main() {
     ],
   });
 
-  console.log("✅ 익명 피드백 세션 생성 (대상자 2명, 피드백 5건)");
+  console.log("✅ 익명 피드백 세션 생성 (대상자 3명, 피드백 8건)");
 
   // ==========================================
   // 8. Development Goals
@@ -737,7 +775,7 @@ async function main() {
   console.log("  - 제출된 리뷰 9건 (완료 주기)");
   console.log("  - 대기중 배정 15건 (진행중 주기)");
   console.log("  - 피드백 세션 2개 (기명 1 + 익명 1)");
-  console.log("  - 피드백 응답 13건");
+  console.log("  - 피드백 응답 19건");
   console.log("  - 개선 목표 5건");
   console.log("  - 알림 8건\n");
 }
