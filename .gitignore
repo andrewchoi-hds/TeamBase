@@ -37,3 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# internal docs (not for repo)
+/docs/internal/

@@ -5,9 +5,6 @@
 import {
   users, departments, reviewTemplates, reviewCycles, reviewAssignments,
   reviews, reviewResponses, reviewCategories, reviewCriteria,
-  identifiedFeedbacks, anonymousFeedbacks, anonymousFeedbackTokens,
-  objectives, keyResults, keyResultCheckIns,
-  meetings, meetingNotes, actionItems,
   notifications, accessLogs,
 } from "./mock-data";
 
@@ -185,15 +182,6 @@ export const mockPrisma = {
   reviewResponse: createMockModel(reviewResponses),
   reviewCategory: createMockModel(reviewCategories),
   reviewCriterion: createMockModel(reviewCriteria),
-  identifiedFeedback: createMockModel(identifiedFeedbacks),
-  anonymousFeedback: createMockModel(anonymousFeedbacks),
-  anonymousFeedbackToken: createMockModel(anonymousFeedbackTokens),
-  objective: createMockModel(objectives),
-  keyResult: createMockModel(keyResults),
-  keyResultCheckIn: createMockModel(keyResultCheckIns),
-  meeting: createMockModel(meetings),
-  meetingNote: createMockModel(meetingNotes),
-  actionItem: createMockModel(actionItems),
   notification: createMockModel(notifications),
   accessLog: createMockModel(accessLogs),
   // Prisma transaction mock - just execute sequentially

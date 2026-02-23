@@ -120,7 +120,7 @@ export default function MemberReviewResultPage({ params }: { params: { cycleId: 
         </Card>
       </div>
 
-      <StrengthWeakness strengths={report.strengths} weaknesses={report.weaknesses} />
+      <StrengthWeakness strengths={report.strengths} weaknesses={report.weaknesses} cycleId={cycleId} isOwnReport={isOwnReport} />
 
       {/* 이전 개선 목표 현황 */}
       {previousGoals && previousGoals.length > 0 && (

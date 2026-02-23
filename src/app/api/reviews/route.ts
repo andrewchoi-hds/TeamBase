@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
+import { getCurrentUser, unauthorized, forbidden, badRequest } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 
 async function handleGET(req: NextRequest) {
@@ -14,10 +14,20 @@ async function handleGET(req: NextRequest) {
 
   let where: any;
   if (type === "received") {
-    // targetId가 지정된 경우: 본인 또는 ADMIN/MANAGER만 다른 사용자 조회 가능
     const effectiveTargetId = targetId || user.id;
-    if (effectiveTargetId !== user.id && user.role !== "ADMIN" && user.role !== "MANAGER") {
-      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    // 타인 결과 조회 권한 체크
+    if (effectiveTargetId !== user.id) {
+      if (user.role === "MEMBER") {
+        return forbidden();
+      }
+      // MANAGER: 본인 팀원만 조회 가능
+      if (user.role === "MANAGER") {
+        const target = await prisma.user.findUnique({
+          where: { id: effectiveTargetId },
+          select: { managerId: true },
+        });
+        if (target?.managerId !== user.id) return forbidden();
+      }
     }
     where = { targetId: effectiveTargetId, ...(cycleId ? { cycleId } : {}) };
   } else {
@@ -62,6 +72,17 @@ async function handlePOST(req: NextRequest) {
 
   if (!assignmentId || !cycleId || !targetId) {
     return badRequest("assignmentId, cycleId, and targetId are required");
+  }
+
+  // Assignment 소유권 검증: reviewer가 현재 사용자인지 확인
+  const assignment = await prisma.reviewAssignment.findUnique({
+    where: { id: assignmentId },
+    select: { reviewerId: true, status: true },
+  });
+  if (!assignment) return badRequest("배정을 찾을 수 없습니다.");
+  if (assignment.reviewerId !== user.id) return forbidden();
+  if (assignment.status === "SUBMITTED") {
+    return badRequest("이미 제출된 배정입니다.");
   }
 
   const review = await prisma.$transaction(async (tx) => {

@@ -53,13 +53,6 @@ const EMAIL_TEMPLATES: Partial<Record<NotificationType, (input: TemplateInput) =
       ${link ? button("평가 확인하기", link) : ""}
     `),
 
-  MEETING_REMINDER: ({ message, link }) =>
-    layout(`
-      <h2 style="font-size:16px;color:#18181b;margin:0 0 12px;">미팅 알림</h2>
-      <p style="font-size:14px;color:#52525b;line-height:1.6;">${message}</p>
-      ${link ? button("미팅 상세보기", link) : ""}
-    `),
-
   REVIEW_REOPENED: ({ message, link }) =>
     layout(`
       <h2 style="font-size:16px;color:#dc2626;margin:0 0 12px;">평가 재오픈</h2>
@@ -71,7 +64,6 @@ const EMAIL_TEMPLATES: Partial<Record<NotificationType, (input: TemplateInput) =
 export const EMAIL_TYPES: NotificationType[] = [
   "REVIEW_REQUESTED",
   "REVIEW_CYCLE_ENDING",
-  "MEETING_REMINDER",
   "REVIEW_REOPENED",
 ];
 

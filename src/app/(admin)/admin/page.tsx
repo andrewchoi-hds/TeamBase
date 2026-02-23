@@ -41,7 +41,9 @@ export default function AdminDashboardPage() {
         {[
           { title: "사용자 관리", href: "/admin/users", desc: "사용자 추가, 역할 변경" },
           { title: "조직 관리", href: "/admin/organization", desc: "부서 구조 관리" },
-          { title: "평가 설정", href: "/admin/review-settings", desc: "평가 템플릿 설정" },
+          { title: "평가 주기 관리", href: "/admin/review-cycles", desc: "평가 주기 생성, 배정 관리" },
+          { title: "평가 템플릿", href: "/admin/templates", desc: "평가 항목 템플릿 설정" },
+          { title: "피드백 세션", href: "/admin/feedback-sessions", desc: "피드백 세션 생성/관리" },
           { title: "시스템 설정", href: "/admin/system", desc: "시스템 환경 설정" },
         ].map((item) => (
           <Link key={item.href} href={item.href}>

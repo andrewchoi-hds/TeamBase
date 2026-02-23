@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
@@ -40,6 +41,7 @@ const columns: ColumnDef<any>[] = [
 ];
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -98,7 +100,13 @@ export default function AdminUsersPage() {
       </PageHeader>
 
       {isLoading ? <LoadingState /> : (
-        <DataTable columns={columns} data={users || []} searchKey="name" searchPlaceholder="사용자 검색..." />
+        <DataTable
+          columns={columns}
+          data={users || []}
+          searchKey="name"
+          searchPlaceholder="사용자 검색..."
+          onRowClick={(row) => router.push(`/admin/users/${row.id}`)}
+        />
       )}
     </div>
   );

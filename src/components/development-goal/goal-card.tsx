@@ -65,17 +65,58 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
 
   if (compact) {
     return (
-      <div className="flex items-center justify-between py-2">
+      <div className="flex items-center justify-between py-2 gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Target className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <span className="text-sm truncate">{goal.title}</span>
           <Badge variant={statusInfo.variant} className="text-xs shrink-0">{statusInfo.label}</Badge>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${goal.progress}%` }} />
-          </div>
-          <span className="text-xs text-muted-foreground w-8 text-right">{goal.progress}%</span>
+          {editable && goal.status === "ACTIVE" && isEditing ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={progress}
+                onChange={(e) => setProgress(Number(e.target.value))}
+                className="w-14 h-6 text-xs"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => updateMutation.mutate({ progress })}
+              >
+                <CheckCircle2 className="h-3 w-3 text-green-600" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => { setIsEditing(false); setProgress(goal.progress); }}
+              >
+                <XCircle className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${goal.progress}%` }} />
+              </div>
+              <span className="text-xs text-muted-foreground w-8 text-right">{goal.progress}%</span>
+              {editable && goal.status === "ACTIVE" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </div>
     );

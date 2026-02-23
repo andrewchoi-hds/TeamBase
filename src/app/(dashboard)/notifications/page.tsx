@@ -19,10 +19,8 @@ const typeIcons: Record<string, string> = {
   REVIEW_SUBMITTED: "✅",
   REVIEW_CYCLE_STARTED: "🚀",
   REVIEW_CYCLE_ENDING: "⏰",
+  REVIEW_REOPENED: "🔄",
   FEEDBACK_RECEIVED: "💬",
-  MEETING_SCHEDULED: "📅",
-  MEETING_REMINDER: "🔔",
-  OKR_CHECK_IN_DUE: "🎯",
   ACCESS_LOG_ALERT: "👁️",
 };
 

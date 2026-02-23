@@ -9,7 +9,7 @@ interface CreateGoalInput {
   sourceType?: string;
   sourceCycleId?: string;
   targetDate?: string;
-  feedbackIds?: { identifiedFeedbackId?: string; anonymousFeedbackId?: string }[];
+  feedbackIds?: { sessionResponseId?: string }[];
 }
 
 interface UpdateGoalInput {
@@ -33,8 +33,7 @@ export const developmentGoalService = {
         feedbackLinks: input.feedbackIds?.length
           ? {
               create: input.feedbackIds.map((fb) => ({
-                identifiedFeedbackId: fb.identifiedFeedbackId ?? null,
-                anonymousFeedbackId: fb.anonymousFeedbackId ?? null,
+                sessionResponseId: fb.sessionResponseId ?? null,
               })),
             }
           : undefined,
@@ -75,8 +74,7 @@ export const developmentGoalService = {
       include: {
         feedbackLinks: {
           include: {
-            identifiedFeedback: { select: { id: true, content: true, category: true } },
-            anonymousFeedback: { select: { id: true, content: true, category: true } },
+            sessionResponse: { select: { id: true, content: true, category: true } },
           },
         },
         sourceCycle: { select: { id: true, name: true } },
@@ -92,8 +90,7 @@ export const developmentGoalService = {
         owner: { select: { id: true, name: true, position: true, managerId: true } },
         feedbackLinks: {
           include: {
-            identifiedFeedback: { select: { id: true, content: true, category: true, authorId: true } },
-            anonymousFeedback: { select: { id: true, content: true, category: true } },
+            sessionResponse: { select: { id: true, content: true, category: true, authorId: true } },
           },
         },
         sourceCycle: { select: { id: true, name: true } },
@@ -187,7 +184,7 @@ export const developmentGoalService = {
     // 삭제 전 스냅샷 보존
     const existing = await prisma.developmentGoal.findUnique({
       where: { id },
-      include: { feedbackLinks: { select: { identifiedFeedbackId: true, anonymousFeedbackId: true } } },
+      include: { feedbackLinks: { select: { sessionResponseId: true } } },
     });
 
     await prisma.developmentGoal.delete({ where: { id } });
@@ -213,12 +210,11 @@ export const developmentGoalService = {
     });
   },
 
-  async linkFeedback(goalId: string, feedbackId: { identifiedFeedbackId?: string; anonymousFeedbackId?: string }, userId?: string) {
+  async linkFeedback(goalId: string, feedbackId: { sessionResponseId?: string }, userId?: string) {
     const link = await prisma.developmentGoalFeedback.create({
       data: {
         developmentGoalId: goalId,
-        identifiedFeedbackId: feedbackId.identifiedFeedbackId ?? null,
-        anonymousFeedbackId: feedbackId.anonymousFeedbackId ?? null,
+        sessionResponseId: feedbackId.sessionResponseId ?? null,
       },
     });
 
@@ -229,8 +225,7 @@ export const developmentGoalService = {
       userId: userId ?? null,
       changes: {
         linkedFeedback: {
-          identifiedFeedbackId: feedbackId.identifiedFeedbackId ?? null,
-          anonymousFeedbackId: feedbackId.anonymousFeedbackId ?? null,
+          sessionResponseId: feedbackId.sessionResponseId ?? null,
         },
       },
       metadata: { action: "LINK_FEEDBACK", linkId: link.id },
@@ -240,19 +235,26 @@ export const developmentGoalService = {
   },
 
   async getDevelopmentContext(userId: string) {
-    const [feedbacks, anonymousFeedbacks, activeGoals, latestCompletedCycle] = await Promise.all([
-      prisma.identifiedFeedback.findMany({
-        where: { targetId: userId },
-        select: { id: true, content: true, category: true, createdAt: true, author: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-      prisma.anonymousFeedback.findMany({
-        where: { targetId: userId },
-        select: { id: true, content: true, category: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
+    // 세션 기반 피드백에서 받은 피드백 조회
+    const sessionFeedbacks = await prisma.feedbackSessionResponse.findMany({
+      where: { target: { userId } },
+      select: {
+        id: true,
+        content: true,
+        category: true,
+        createdAt: true,
+        author: { select: { name: true } },
+        target: {
+          select: {
+            session: { select: { mode: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
+
+    const [activeGoals, latestCompletedCycle] = await Promise.all([
       prisma.developmentGoal.findMany({
         where: { ownerId: userId, status: "ACTIVE" },
         include: {
@@ -276,14 +278,19 @@ export const developmentGoalService = {
       }),
     ]);
 
-    const strengths = feedbacks
+    const strengths = sessionFeedbacks
       .filter((f) => f.category === "STRENGTH")
-      .map((f) => ({ content: f.content, author: f.author?.name }));
+      .map((f) => ({
+        content: f.content,
+        author: f.target.session.mode === "NAMED" ? f.author?.name ?? null : null,
+      }));
 
-    const improvements = [
-      ...feedbacks.filter((f) => f.category === "IMPROVEMENT").map((f) => ({ content: f.content, author: f.author?.name })),
-      ...anonymousFeedbacks.filter((f) => f.category === "IMPROVEMENT").map((f) => ({ content: f.content, author: null })),
-    ];
+    const improvements = sessionFeedbacks
+      .filter((f) => f.category === "IMPROVEMENT")
+      .map((f) => ({
+        content: f.content,
+        author: f.target.session.mode === "NAMED" ? f.author?.name ?? null : null,
+      }));
 
     let previousCycleSummary = null;
     if (latestCompletedCycle) {

@@ -22,9 +22,10 @@ import { Loader2, Target } from "lucide-react";
 interface CreateGoalDialogProps {
   sourceType?: string;
   sourceCycleId?: string;
-  feedbackIds?: { identifiedFeedbackId?: string; anonymousFeedbackId?: string }[];
+  feedbackIds?: { sessionResponseId?: string }[];
   defaultTitle?: string;
   trigger?: React.ReactNode;
+  variant?: "default" | "icon";
   onCreated?: () => void;
 }
 
@@ -34,6 +35,7 @@ export function CreateGoalDialog({
   feedbackIds,
   defaultTitle = "",
   trigger,
+  variant = "default",
   onCreated,
 }: CreateGoalDialogProps) {
   const [open, setOpen] = useState(false);
@@ -81,10 +83,16 @@ export function CreateGoalDialog({
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) { setTitle(defaultTitle); } }}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button variant="outline" size="sm">
-            <Target className="mr-2 h-4 w-4" />
-            개선 목표 설정
-          </Button>
+          variant === "icon" ? (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="개선 목표 설정">
+              <Target className="h-3.5 w-3.5 text-orange-500" />
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm">
+              <Target className="mr-2 h-4 w-4" />
+              개선 목표 설정
+            </Button>
+          )
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

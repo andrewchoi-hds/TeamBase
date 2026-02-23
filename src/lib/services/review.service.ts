@@ -2,6 +2,11 @@ import prisma from "@/lib/prisma";
 import { ReviewCycleStatus, ReviewType } from "@prisma/client";
 import { notificationService } from "./notification.service";
 import { auditLogService } from "./audit-log.service";
+import {
+  generateAssignments as generateAssignmentsUtil,
+  getAssignmentBreakdown,
+  type Strategy,
+} from "@/lib/utils/assignment-generator";
 
 export const reviewService = {
   async createCycle(data: {
@@ -10,8 +15,56 @@ export const reviewService = {
     startDate: Date;
     endDate: Date;
     templateId?: string;
+    assignmentRules?: { strategies: Strategy[]; targetUserIds?: string[] };
   }) {
-    return prisma.reviewCycle.create({ data });
+    return prisma.reviewCycle.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        templateId: data.templateId,
+        assignmentRules: data.assignmentRules ?? undefined,
+      },
+    });
+  },
+
+  async previewAssignments(strategies: Strategy[], targetUserIds?: string[]) {
+    const allUsers = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, position: true, departmentId: true, department: { select: { id: true, name: true } }, managerId: true },
+    });
+
+    const selectedUsers = targetUserIds
+      ? allUsers.filter((u) => targetUserIds.includes(u.id))
+      : allUsers;
+
+    const assignments = generateAssignmentsUtil(strategies, selectedUsers, allUsers);
+    const breakdown = getAssignmentBreakdown(assignments);
+
+    return { totalAssignments: assignments.length, breakdown, assignments };
+  },
+
+  async generateAndCreateAssignments(cycleId: string, strategies: Strategy[], targetUserIds?: string[]) {
+    const allUsers = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, position: true, departmentId: true, department: { select: { id: true, name: true } }, managerId: true },
+    });
+
+    const selectedUsers = targetUserIds
+      ? allUsers.filter((u) => targetUserIds.includes(u.id))
+      : allUsers;
+
+    const assignments = generateAssignmentsUtil(strategies, selectedUsers, allUsers);
+
+    if (assignments.length === 0) return { count: 0 };
+
+    const result = await prisma.reviewAssignment.createMany({
+      data: assignments.map((a) => ({ ...a, cycleId, reviewType: a.reviewType as ReviewType })),
+      skipDuplicates: true,
+    });
+
+    return { count: result.count };
   },
 
   async updateCycleStatus(id: string, status: ReviewCycleStatus, userId?: string) {

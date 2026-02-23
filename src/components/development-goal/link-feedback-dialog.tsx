@@ -21,14 +21,12 @@ import { CreateGoalDialog } from "./create-goal-dialog";
 
 interface LinkFeedbackDialogProps {
   feedbackId: string;
-  feedbackType: "identified" | "anonymous";
   feedbackContent: string;
   trigger?: React.ReactNode;
 }
 
 export function LinkFeedbackDialog({
   feedbackId,
-  feedbackType,
   feedbackContent,
   trigger,
 }: LinkFeedbackDialogProps) {
@@ -46,8 +44,7 @@ export function LinkFeedbackDialog({
   const linkMutation = useMutation({
     mutationFn: () =>
       api.post(`/development-goals/${selectedGoalId}/link-feedback`, {
-        identifiedFeedbackId: feedbackType === "identified" ? feedbackId : undefined,
-        anonymousFeedbackId: feedbackType === "anonymous" ? feedbackId : undefined,
+        sessionResponseId: feedbackId,
       }),
     onSuccess: () => {
       toast.success("피드백이 목표에 연결되었습니다.");
@@ -57,9 +54,7 @@ export function LinkFeedbackDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const feedbackIds = feedbackType === "identified"
-    ? [{ identifiedFeedbackId: feedbackId }]
-    : [{ anonymousFeedbackId: feedbackId }];
+  const feedbackIds = [{ sessionResponseId: feedbackId }];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

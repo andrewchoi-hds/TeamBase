@@ -42,30 +42,30 @@ export const NotificationType = {
   REVIEW_SUBMITTED: "REVIEW_SUBMITTED",
   REVIEW_CYCLE_STARTED: "REVIEW_CYCLE_STARTED",
   REVIEW_CYCLE_ENDING: "REVIEW_CYCLE_ENDING",
+  REVIEW_REOPENED: "REVIEW_REOPENED",
   FEEDBACK_RECEIVED: "FEEDBACK_RECEIVED",
-  MEETING_SCHEDULED: "MEETING_SCHEDULED",
-  MEETING_REMINDER: "MEETING_REMINDER",
-  OKR_CHECK_IN_DUE: "OKR_CHECK_IN_DUE",
   ACCESS_LOG_ALERT: "ACCESS_LOG_ALERT",
 } as const;
 
 export const ResourceType = {
   REVIEW: "REVIEW",
   FEEDBACK: "FEEDBACK",
-  OKR: "OKR",
   PROFILE: "PROFILE",
-  MEETING: "MEETING",
 } as const;
 
-export const ObjectiveStatus = {
-  DRAFT: "DRAFT",
+export const DevelopmentGoalStatus = {
   ACTIVE: "ACTIVE",
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
 } as const;
 
-export const ObjectiveLevel = {
-  COMPANY: "COMPANY",
-  TEAM: "TEAM",
-  INDIVIDUAL: "INDIVIDUAL",
+export const FeedbackSessionMode = {
+  NAMED: "NAMED",
+  ANONYMOUS: "ANONYMOUS",
+} as const;
+
+export const FeedbackSessionStatus = {
+  DRAFT: "DRAFT",
+  ACTIVE: "ACTIVE",
+  CLOSED: "CLOSED",
 } as const;

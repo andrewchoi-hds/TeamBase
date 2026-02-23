@@ -34,7 +34,6 @@ export default withAuth(
       // 인증 관련 엔드포인트는 더 엄격한 제한
       let preset: "auth" | "register" | "api" | "feedback" = "api";
       if (pathname.startsWith("/api/auth/register")) preset = "register";
-      else if (pathname.includes("/anonymous")) preset = "feedback";
 
       const result = rateLimit(`${preset}:${userId}`, preset);
       if (!result.success) {
@@ -49,13 +48,6 @@ export default withAuth(
       }
     }
 
-    // Team management routes - ADMIN or MANAGER
-    if (pathname.startsWith("/team") || pathname === "/reviews/new") {
-      if (token?.role !== "ADMIN" && token?.role !== "MANAGER") {
-        return NextResponse.redirect(new URL("/", req.url));
-      }
-    }
-
     const response = NextResponse.next();
     return addSecurityHeaders(response);
   },
@@ -65,10 +57,6 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         // 인증 API는 토큰 없이 접근 가능
         if (pathname.startsWith("/api/auth/")) return true;
-        // 익명 피드백 페이지와 API는 인증 불필요
-        if (pathname.startsWith("/feedback/anonymous/")) return true;
-        if (pathname.startsWith("/api/feedback/anonymous/submit")) return true;
-        if (pathname.startsWith("/api/feedback/anonymous/validate-token")) return true;
         // Cron 엔드포인트 (CRON_SECRET으로 자체 인증)
         if (pathname.startsWith("/api/cron/")) return true;
         return !!token;
@@ -82,10 +70,6 @@ export const config = {
     "/",
     "/reviews/:path*",
     "/feedback/:path*",
-    "/objectives/:path*",
-    "/meetings/:path*",
-    "/analytics/:path*",
-    "/team/:path*",
     "/notifications/:path*",
     "/admin/:path*",
     "/api/:path*",

@@ -1,4 +1,4 @@
-import { PrismaClient, Role, ReviewType, FeedbackCategory, ObjectiveLevel, MeetingStatus } from "@prisma/client";
+import { PrismaClient, Role, ReviewType, FeedbackCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -9,18 +9,12 @@ async function main() {
   // Clean existing data
   await prisma.developmentGoalFeedback.deleteMany();
   await prisma.developmentGoal.deleteMany();
+  await prisma.feedbackSessionResponse.deleteMany();
+  await prisma.feedbackSessionParticipant.deleteMany();
+  await prisma.feedbackSessionTarget.deleteMany();
+  await prisma.feedbackSession.deleteMany();
   await prisma.accessLog.deleteMany();
   await prisma.notification.deleteMany();
-  await prisma.actionItem.deleteMany();
-  await prisma.meetingNote.deleteMany();
-  await prisma.meeting.deleteMany();
-  await prisma.recurringMeeting.deleteMany();
-  await prisma.keyResultCheckIn.deleteMany();
-  await prisma.keyResult.deleteMany();
-  await prisma.objective.deleteMany();
-  await prisma.anonymousFeedback.deleteMany();
-  await prisma.anonymousFeedbackToken.deleteMany();
-  await prisma.identifiedFeedback.deleteMany();
   await prisma.reviewResponse.deleteMany();
   await prisma.review.deleteMany();
   await prisma.reviewAssignment.deleteMany();
@@ -180,164 +174,59 @@ async function main() {
 
   console.log("Review cycle and assignments created");
 
-  // Identified Feedback
-  await prisma.identifiedFeedback.create({
+  // Feedback Session (기명)
+  const fbSession = await prisma.feedbackSession.create({
     data: {
-      authorId: manager1.id,
-      targetId: members[0].id,
-      category: FeedbackCategory.STRENGTH,
-      content: "코드 리뷰에서 항상 건설적인 피드백을 제공해주셔서 팀 전체의 코드 품질 향상에 큰 기여를 하고 계십니다. 특히 아키텍처 설계에 대한 깊은 이해가 돋보입니다.",
+      name: "2024 상반기 피드백",
+      description: "상반기 팀원 간 피드백 세션",
+      mode: "NAMED",
+      status: "ACTIVE",
+      createdById: admin.id,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
-  await prisma.identifiedFeedback.create({
+
+  // Feedback targets & responses
+  const target1 = await prisma.feedbackSessionTarget.create({
+    data: { sessionId: fbSession.id, userId: members[0].id },
+  });
+  const target2 = await prisma.feedbackSessionTarget.create({
+    data: { sessionId: fbSession.id, userId: members[3].id },
+  });
+
+  await prisma.feedbackSessionResponse.create({
     data: {
+      targetId: target1.id,
+      authorId: manager1.id,
+      category: FeedbackCategory.STRENGTH,
+      content: "코드 리뷰에서 항상 건설적인 피드백을 제공해주셔서 팀 전체의 코드 품질 향상에 큰 기여를 하고 계십니다.",
+    },
+  });
+  await prisma.feedbackSessionResponse.create({
+    data: {
+      targetId: target1.id,
       authorId: members[1].id,
-      targetId: members[0].id,
       category: FeedbackCategory.IMPROVEMENT,
       content: "가끔 기술적 설명이 어려운 부분이 있어요. 비개발자에게 설명할 때 좀 더 쉬운 용어를 사용하면 좋겠습니다.",
     },
   });
-  await prisma.identifiedFeedback.create({
+  await prisma.feedbackSessionResponse.create({
     data: {
+      targetId: target2.id,
       authorId: manager2.id,
-      targetId: members[3].id,
       category: FeedbackCategory.STRENGTH,
       content: "마케팅 캠페인 기획력이 뛰어납니다. 데이터 기반으로 의사결정하는 점이 인상적입니다.",
     },
   });
 
-  console.log("Feedback created");
-
-  // OKR
-  const companyObj = await prisma.objective.create({
-    data: {
-      title: "2024년 상반기 매출 목표 달성",
-      description: "전사 매출 목표 150억 달성",
-      ownerId: admin.id,
-      level: ObjectiveLevel.COMPANY,
-      status: "ACTIVE",
-      startDate: new Date("2024-01-01"),
-      endDate: new Date("2024-06-30"),
-      progress: 65,
-    },
-  });
-
-  const teamObj = await prisma.objective.create({
-    data: {
-      title: "개발팀 생산성 30% 향상",
-      ownerId: manager1.id,
-      level: ObjectiveLevel.TEAM,
-      status: "ACTIVE",
-      parentId: companyObj.id,
-      startDate: new Date("2024-01-01"),
-      endDate: new Date("2024-06-30"),
-      progress: 50,
-    },
-  });
-
-  const personalObj = await prisma.objective.create({
-    data: {
-      title: "코드 커버리지 80% 이상 달성",
-      description: "전체 프로젝트의 테스트 코드 커버리지를 80% 이상으로 유지",
-      ownerId: members[0].id,
-      level: ObjectiveLevel.INDIVIDUAL,
-      status: "ACTIVE",
-      parentId: teamObj.id,
-      startDate: new Date("2024-01-01"),
-      endDate: new Date("2024-06-30"),
-      progress: 70,
-    },
-  });
-
-  // Key Results
-  const kr1 = await prisma.keyResult.create({
-    data: {
-      objectiveId: personalObj.id,
-      title: "단위 테스트 커버리지",
-      type: "PERCENTAGE",
-      startValue: 45,
-      currentValue: 72,
-      targetValue: 80,
-      unit: "%",
-      progress: 77,
-    },
-  });
-
-  const kr2 = await prisma.keyResult.create({
-    data: {
-      objectiveId: personalObj.id,
-      title: "통합 테스트 케이스 수",
-      type: "NUMERIC",
-      startValue: 30,
-      currentValue: 85,
-      targetValue: 100,
-      unit: "건",
-      progress: 78,
-    },
-  });
-
-  // Check-ins
-  await prisma.keyResultCheckIn.createMany({
-    data: [
-      { keyResultId: kr1.id, value: 55, note: "주요 서비스 모듈 테스트 추가" },
-      { keyResultId: kr1.id, value: 65, note: "API 레이어 테스트 보강" },
-      { keyResultId: kr1.id, value: 72, note: "유틸리티 함수 테스트 완료" },
-      { keyResultId: kr2.id, value: 50, note: "결제 플로우 통합 테스트" },
-      { keyResultId: kr2.id, value: 70, note: "사용자 인증 통합 테스트" },
-      { keyResultId: kr2.id, value: 85, note: "주문 시스템 통합 테스트 추가" },
-    ],
-  });
-
-  console.log("OKR created");
-
-  // Meetings
-  const meeting1 = await prisma.meeting.create({
-    data: {
-      title: "주간 1:1 미팅",
-      organizerId: manager1.id,
-      participantId: members[0].id,
-      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-      duration: 30,
-      status: MeetingStatus.SCHEDULED,
-      agenda: "1. 이번 주 업무 진행 상황\n2. 블로커 확인\n3. 다음 주 계획",
-    },
-  });
-
-  const meeting2 = await prisma.meeting.create({
-    data: {
-      title: "분기 성과 리뷰",
-      organizerId: manager1.id,
-      participantId: members[1].id,
-      scheduledAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      duration: 60,
-      status: MeetingStatus.COMPLETED,
-      agenda: "분기 성과 리뷰 및 피드백",
-    },
-  });
-
-  await prisma.meetingNote.create({
-    data: {
-      meetingId: meeting2.id,
-      authorId: manager1.id,
-      content: "전반적으로 좋은 성과를 보여주고 있음. 특히 코드 품질 개선에 대한 노력이 돋보임.",
-    },
-  });
-
-  await prisma.actionItem.createMany({
-    data: [
-      { meetingId: meeting2.id, assigneeId: members[1].id, title: "테스트 자동화 파이프라인 구축", status: "IN_PROGRESS" },
-      { meetingId: meeting2.id, assigneeId: members[1].id, title: "기술 블로그 포스팅 1편 작성", status: "TODO" },
-    ],
-  });
-
-  console.log("Meetings created");
+  console.log("Feedback session created");
 
   // Notifications
   await prisma.notification.createMany({
     data: [
       { userId: members[0].id, type: "REVIEW_REQUESTED", title: "새로운 평가 요청", message: "2024년 상반기 평가 주기가 시작되었습니다.", link: `/reviews/${cycle.id}` },
       { userId: members[0].id, type: "FEEDBACK_RECEIVED", title: "새로운 피드백", message: "이팀장님이 피드백을 남겼습니다.", link: "/feedback" },
-      { userId: members[0].id, type: "MEETING_SCHEDULED", title: "미팅 예약", message: "이팀장님과 주간 1:1 미팅이 예약되었습니다.", link: `/meetings/${meeting1.id}` },
       { userId: manager1.id, type: "REVIEW_CYCLE_STARTED", title: "평가 주기 시작", message: "2024년 상반기 평가가 시작되었습니다.", link: `/reviews/${cycle.id}` },
     ],
   });

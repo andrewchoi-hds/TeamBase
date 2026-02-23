@@ -11,9 +11,8 @@ vi.mock("@/lib/auth-utils", () => ({
 vi.mock("@/lib/prisma", () => ({
   default: {
     reviewAssignment: { count: vi.fn() },
-    identifiedFeedback: { count: vi.fn() },
-    meeting: { count: vi.fn() },
-    objective: { findMany: vi.fn() },
+    feedbackSessionResponse: { count: vi.fn() },
+    developmentGoal: { findMany: vi.fn() },
   },
 }));
 
@@ -40,9 +39,8 @@ describe("Dashboard Personal API", () => {
     vi.mocked(prisma.reviewAssignment.count)
       .mockResolvedValueOnce(2)  // pending
       .mockResolvedValueOnce(5); // completed
-    vi.mocked(prisma.identifiedFeedback.count).mockResolvedValue(3);
-    vi.mocked(prisma.meeting.count).mockResolvedValue(1);
-    vi.mocked(prisma.objective.findMany).mockResolvedValue([
+    vi.mocked(prisma.feedbackSessionResponse.count).mockResolvedValue(3);
+    vi.mocked(prisma.developmentGoal.findMany).mockResolvedValue([
       { progress: 50 },
       { progress: 80 },
     ] as any);
@@ -54,7 +52,6 @@ describe("Dashboard Personal API", () => {
     expect(body.pendingAssignments).toBe(2);
     expect(body.completedAssignments).toBe(5);
     expect(body.feedbackReceived).toBe(3);
-    expect(body.upcomingMeetings).toBe(1);
     expect(body.avgOkrProgress).toBe(65);
   });
 });

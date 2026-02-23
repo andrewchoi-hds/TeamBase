@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Play, BarChart3, Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
-import { BulkAssignmentDialog } from "@/components/review/bulk-assignment-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -201,20 +200,10 @@ export default function ReviewCycleDetailPage({ params }: { params: { cycleId: s
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">전체 평가 현황</CardTitle>
             {cycle.status === "DRAFT" && (
-              <div className="flex items-center gap-2">
-                <BulkAssignmentDialog
-                  cycleId={cycleId}
-                  existingAssignments={(cycle.assignments ?? []).map((a: any) => ({
-                    reviewerId: a.reviewer.id,
-                    targetId: a.target.id,
-                    reviewType: a.reviewType,
-                  }))}
-                />
-                <Button size="sm" variant="outline" onClick={() => setShowAddForm(!showAddForm)}>
-                  <Plus className="mr-1 h-4 w-4" />
-                  개별 추가
-                </Button>
-              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowAddForm(!showAddForm)}>
+                <Plus className="mr-1 h-4 w-4" />
+                개별 추가
+              </Button>
             )}
           </CardHeader>
           <CardContent>

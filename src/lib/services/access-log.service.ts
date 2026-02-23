@@ -12,9 +12,7 @@ interface LogAccessInput {
 const resourceTypeLabels: Record<ResourceType, string> = {
   REVIEW: "평가",
   FEEDBACK: "피드백",
-  OKR: "목표",
   PROFILE: "프로필",
-  MEETING: "미팅",
 };
 
 export const accessLogService = {

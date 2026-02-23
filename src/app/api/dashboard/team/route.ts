@@ -18,7 +18,9 @@ async function handleGET() {
     memberIds.length,
     prisma.reviewAssignment.count({ where: { targetId: { in: memberIds }, status: "PENDING" } }),
     prisma.reviewAssignment.count({ where: { targetId: { in: memberIds }, status: "SUBMITTED" } }),
-    prisma.identifiedFeedback.count({ where: { targetId: { in: memberIds } } }),
+    prisma.feedbackSessionResponse.count({
+      where: { target: { userId: { in: memberIds } } },
+    }),
   ]);
 
   return NextResponse.json({

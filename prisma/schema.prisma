@@ -43,22 +43,16 @@ model User {
   reviewsWritten              Review[]           @relation("ReviewAuthor")
   reviewsReceived             Review[]           @relation("ReviewTarget")
 
-  identifiedFeedbackGiven    IdentifiedFeedback[] @relation("FeedbackAuthor")
-  identifiedFeedbackReceived IdentifiedFeedback[] @relation("FeedbackTarget")
-  anonymousFeedbackReceived  AnonymousFeedback[]  @relation("AnonymousFeedbackTarget")
-
-  objectives Objective[]
-
-  meetingsAsOrganizer   Meeting[] @relation("MeetingOrganizer")
-  meetingsAsParticipant Meeting[] @relation("MeetingParticipant")
-  meetingNotes          MeetingNote[]
-  actionItems           ActionItem[]
-
   notifications    Notification[]
   accessLogsViewer AccessLog[] @relation("AccessLogViewer")
   accessLogsTarget AccessLog[] @relation("AccessLogTarget")
   auditLogs        AuditLog[]
   developmentGoals DevelopmentGoal[] @relation("DevGoalOwner")
+
+  feedbackSessionsCreated      FeedbackSession[]            @relation("FeedbackSessionCreator")
+  feedbackSessionTargets       FeedbackSessionTarget[]      @relation("FeedbackSessionTargetUser")
+  feedbackSessionParticipants  FeedbackSessionParticipant[] @relation("FeedbackSessionParticipantUser")
+  feedbackSessionResponses     FeedbackSessionResponse[]    @relation("FeedbackSessionResponseAuthor")
 
   @@index([departmentId])
   @@index([managerId])
@@ -131,15 +125,16 @@ enum ReviewCycleStatus {
 }
 
 model ReviewCycle {
-  id          String            @id @default(cuid())
-  name        String
-  description String?
-  status      ReviewCycleStatus @default(DRAFT)
-  startDate   DateTime
-  endDate     DateTime
-  templateId  String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  status          ReviewCycleStatus @default(DRAFT)
+  startDate       DateTime
+  endDate         DateTime
+  templateId      String?
+  assignmentRules Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   template    ReviewTemplate?    @relation(fields: [templateId], references: [id])
   assignments ReviewAssignment[]
@@ -268,230 +263,13 @@ model ReviewResponse {
 }
 
 // ============================================
-// Feedback System
+// Feedback Category (shared by session feedback)
 // ============================================
 
 enum FeedbackCategory {
   STRENGTH
   IMPROVEMENT
   GENERAL
-}
-
-model IdentifiedFeedback {
-  id        String           @id @default(cuid())
-  authorId  String
-  targetId  String
-  category  FeedbackCategory @default(GENERAL)
-  content   String           @db.Text
-  isPublic  Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  author User @relation("FeedbackAuthor", fields: [authorId], references: [id])
-  target User @relation("FeedbackTarget", fields: [targetId], references: [id])
-  developmentGoalLinks DevelopmentGoalFeedback[]
-
-  @@index([authorId])
-  @@index([targetId])
-}
-
-model AnonymousFeedback {
-  id              String           @id @default(cuid())
-  targetId        String
-  category        FeedbackCategory @default(GENERAL)
-  content         String           @db.Text
-  submissionToken String           @unique
-  createdAt       DateTime         @default(now())
-
-  target User @relation("AnonymousFeedbackTarget", fields: [targetId], references: [id])
-  developmentGoalLinks DevelopmentGoalFeedback[]
-
-  @@index([targetId])
-}
-
-model AnonymousFeedbackToken {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
-  targetId  String
-  isUsed    Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([tokenHash])
-  @@index([targetId])
-}
-
-// ============================================
-// OKR System
-// ============================================
-
-enum ObjectiveStatus {
-  DRAFT
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum ObjectiveLevel {
-  COMPANY
-  TEAM
-  INDIVIDUAL
-}
-
-model Objective {
-  id          String          @id @default(cuid())
-  title       String
-  description String?         @db.Text
-  ownerId     String
-  level       ObjectiveLevel  @default(INDIVIDUAL)
-  status      ObjectiveStatus @default(DRAFT)
-  parentId    String?
-  startDate   DateTime
-  endDate     DateTime
-  progress    Float           @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  owner      User         @relation(fields: [ownerId], references: [id])
-  parent     Objective?   @relation("ObjectiveHierarchy", fields: [parentId], references: [id])
-  children   Objective[]  @relation("ObjectiveHierarchy")
-  keyResults KeyResult[]
-
-  @@index([ownerId])
-  @@index([parentId])
-  @@index([status])
-}
-
-enum KeyResultType {
-  NUMERIC
-  PERCENTAGE
-  CURRENCY
-  BOOLEAN
-}
-
-model KeyResult {
-  id           String        @id @default(cuid())
-  objectiveId  String
-  title        String
-  type         KeyResultType @default(NUMERIC)
-  startValue   Float         @default(0)
-  currentValue Float         @default(0)
-  targetValue  Float
-  unit         String?
-  progress     Float         @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  objective Objective        @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
-  checkIns  KeyResultCheckIn[]
-
-  @@index([objectiveId])
-}
-
-model KeyResultCheckIn {
-  id          String   @id @default(cuid())
-  keyResultId String
-  value       Float
-  note        String?  @db.Text
-  createdAt   DateTime @default(now())
-
-  keyResult KeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
-
-  @@index([keyResultId])
-}
-
-// ============================================
-// Meeting System
-// ============================================
-
-enum MeetingStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-model Meeting {
-  id            String        @id @default(cuid())
-  title         String
-  organizerId   String
-  participantId String
-  scheduledAt   DateTime
-  duration      Int           @default(30)
-  status        MeetingStatus @default(SCHEDULED)
-  agenda        String?       @db.Text
-  recurringId   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  organizer   User              @relation("MeetingOrganizer", fields: [organizerId], references: [id])
-  participant User              @relation("MeetingParticipant", fields: [participantId], references: [id])
-  recurring   RecurringMeeting? @relation(fields: [recurringId], references: [id])
-  notes       MeetingNote[]
-  actionItems ActionItem[]
-
-  @@index([organizerId])
-  @@index([participantId])
-  @@index([scheduledAt])
-}
-
-model MeetingNote {
-  id        String   @id @default(cuid())
-  meetingId String
-  authorId  String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  author  User    @relation(fields: [authorId], references: [id])
-
-  @@index([meetingId])
-}
-
-enum ActionItemStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
-model ActionItem {
-  id         String           @id @default(cuid())
-  meetingId  String
-  assigneeId String
-  title      String
-  status     ActionItemStatus @default(TODO)
-  dueDate    DateTime?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-
-  meeting  Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  assignee User    @relation(fields: [assigneeId], references: [id])
-
-  @@index([meetingId])
-  @@index([assigneeId])
-}
-
-enum RecurringFrequency {
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-}
-
-model RecurringMeeting {
-  id            String             @id @default(cuid())
-  title         String
-  organizerId   String
-  participantId String
-  frequency     RecurringFrequency
-  dayOfWeek     Int?
-  time          String
-  duration      Int                @default(30)
-  isActive      Boolean            @default(true)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-
-  meetings Meeting[]
 }
 
 // ============================================
@@ -505,9 +283,6 @@ enum NotificationType {
   REVIEW_CYCLE_ENDING
   REVIEW_REOPENED
   FEEDBACK_RECEIVED
-  MEETING_SCHEDULED
-  MEETING_REMINDER
-  OKR_CHECK_IN_DUE
   ACCESS_LOG_ALERT
 }
 
@@ -534,9 +309,7 @@ model Notification {
 enum ResourceType {
   REVIEW
   FEEDBACK
-  OKR
   PROFILE
-  MEETING
 }
 
 model AccessLog {
@@ -629,17 +402,95 @@ model DevelopmentGoal {
 }
 
 model DevelopmentGoalFeedback {
-  id                   String   @id @default(cuid())
-  developmentGoalId    String
-  identifiedFeedbackId String?
-  anonymousFeedbackId  String?
-  createdAt            DateTime @default(now())
+  id                String   @id @default(cuid())
+  developmentGoalId String
+  sessionResponseId String?
+  createdAt         DateTime @default(now())
 
-  developmentGoal    DevelopmentGoal     @relation(fields: [developmentGoalId], references: [id], onDelete: Cascade)
-  identifiedFeedback IdentifiedFeedback? @relation(fields: [identifiedFeedbackId], references: [id], onDelete: SetNull)
-  anonymousFeedback  AnonymousFeedback?  @relation(fields: [anonymousFeedbackId], references: [id], onDelete: SetNull)
+  developmentGoal DevelopmentGoal          @relation(fields: [developmentGoalId], references: [id], onDelete: Cascade)
+  sessionResponse FeedbackSessionResponse? @relation(fields: [sessionResponseId], references: [id], onDelete: SetNull)
 
-  @@unique([developmentGoalId, identifiedFeedbackId])
-  @@unique([developmentGoalId, anonymousFeedbackId])
+  @@unique([developmentGoalId, sessionResponseId])
   @@index([developmentGoalId])
+}
+
+// ============================================
+// Feedback Session System
+// ============================================
+
+enum FeedbackSessionMode {
+  NAMED
+  ANONYMOUS
+}
+
+enum FeedbackSessionStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model FeedbackSession {
+  id                       String                @id @default(cuid())
+  name                     String
+  description              String?               @db.Text
+  mode                     FeedbackSessionMode   @default(NAMED)
+  status                   FeedbackSessionStatus @default(DRAFT)
+  createdById              String
+  startDate                DateTime?
+  endDate                  DateTime?
+  minResponsesForVisibility Int                  @default(3)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  createdBy User                    @relation("FeedbackSessionCreator", fields: [createdById], references: [id])
+  targets   FeedbackSessionTarget[]
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model FeedbackSessionTarget {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  session      FeedbackSession              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user         User                         @relation("FeedbackSessionTargetUser", fields: [userId], references: [id])
+  participants FeedbackSessionParticipant[]
+  responses    FeedbackSessionResponse[]
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model FeedbackSessionParticipant {
+  id       String   @id @default(cuid())
+  targetId String
+  userId   String
+  createdAt DateTime @default(now())
+
+  target FeedbackSessionTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  user   User                  @relation("FeedbackSessionParticipantUser", fields: [userId], references: [id])
+
+  @@unique([targetId, userId])
+  @@index([targetId])
+  @@index([userId])
+}
+
+model FeedbackSessionResponse {
+  id        String           @id @default(cuid())
+  targetId  String
+  authorId  String?
+  category  FeedbackCategory @default(GENERAL)
+  content   String           @db.Text
+  createdAt DateTime         @default(now())
+
+  target FeedbackSessionTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  author User?                 @relation("FeedbackSessionResponseAuthor", fields: [authorId], references: [id])
+  developmentGoalLinks DevelopmentGoalFeedback[]
+
+  @@index([targetId])
+  @@index([authorId])
 }

@@ -52,8 +52,6 @@ export const reminderService = {
     const now = new Date();
     const threeDaysLater = new Date(now);
     threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-    const oneDayLater = new Date(now);
-    oneDayLater.setDate(oneDayLater.getDate() + 1);
 
     const activeCycles = await prisma.reviewCycle.findMany({
       where: {
@@ -134,84 +132,6 @@ export const reminderService = {
         });
         count++;
       }
-    }
-    return count;
-  },
-
-  /**
-   * 미팅 리마인더 (scheduledAt 1시간 전, SCHEDULED 상태)
-   */
-  async sendMeetingReminders() {
-    const now = new Date();
-    const oneHourLater = new Date(now);
-    oneHourLater.setHours(oneHourLater.getHours() + 1);
-
-    const upcomingMeetings = await prisma.meeting.findMany({
-      where: {
-        status: "SCHEDULED",
-        scheduledAt: { gte: now, lte: oneHourLater },
-      },
-      include: {
-        organizer: { select: { id: true, name: true } },
-        participant: { select: { id: true, name: true } },
-      },
-    });
-
-    let count = 0;
-    for (const meeting of upcomingMeetings) {
-      const userIds = [meeting.organizerId, meeting.participantId];
-
-      for (const userId of userIds) {
-        const exists = await notificationService.existsToday(
-          userId,
-          "MEETING_REMINDER",
-          `/meetings/${meeting.id}`
-        );
-        if (exists) continue;
-
-        await notificationService.create({
-          userId,
-          type: "MEETING_REMINDER",
-          title: "미팅 알림",
-          message: `"${meeting.title}" 미팅이 곧 시작됩니다.`,
-          link: `/meetings/${meeting.id}`,
-        });
-        count++;
-      }
-    }
-    return count;
-  },
-
-  /**
-   * OKR 주간 체크인 (매주 월요일, ACTIVE 목표)
-   */
-  async sendOkrCheckInReminders() {
-    const now = new Date();
-    // 월요일인지 확인 (0=일, 1=월)
-    if (now.getDay() !== 1) return 0;
-
-    const activeObjectives = await prisma.objective.findMany({
-      where: { status: "ACTIVE" },
-      select: { id: true, title: true, ownerId: true },
-    });
-
-    let count = 0;
-    for (const obj of activeObjectives) {
-      const exists = await notificationService.existsToday(
-        obj.ownerId,
-        "OKR_CHECK_IN_DUE",
-        `/objectives/${obj.id}`
-      );
-      if (exists) continue;
-
-      await notificationService.create({
-        userId: obj.ownerId,
-        type: "OKR_CHECK_IN_DUE",
-        title: "OKR 주간 체크인",
-        message: `"${obj.title}" 목표의 진행 상황을 업데이트해주세요.`,
-        link: `/objectives/${obj.id}`,
-      });
-      count++;
     }
     return count;
   },

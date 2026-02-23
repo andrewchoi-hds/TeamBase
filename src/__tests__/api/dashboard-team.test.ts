@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     user: { findMany: vi.fn() },
     reviewAssignment: { count: vi.fn() },
-    identifiedFeedback: { count: vi.fn() },
+    feedbackSessionResponse: { count: vi.fn() },
   },
 }));
 
@@ -48,7 +48,7 @@ describe("Dashboard Team API", () => {
     vi.mocked(prisma.reviewAssignment.count)
       .mockResolvedValueOnce(3)  // pending
       .mockResolvedValueOnce(7); // completed
-    vi.mocked(prisma.identifiedFeedback.count).mockResolvedValue(5);
+    vi.mocked(prisma.feedbackSessionResponse.count).mockResolvedValue(5);
 
     const { GET } = await import("@/app/api/dashboard/team/route");
     const res = await GET(new Request("http://localhost/api/dashboard/team") as any, { params: {} } as any);

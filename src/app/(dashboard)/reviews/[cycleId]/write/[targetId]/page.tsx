@@ -111,6 +111,21 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // 자동 저장 (디바운스 3초)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInteracted = useRef(false);
+
+  useEffect(() => {
+    if (!assignment || !hasInteracted.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveDraft(assignment.id, { responses, overallComment });
+    }, 3000);
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [responses, overallComment, assignment, saveDraft]);
+
   // 별점 필수 검증
   const validateRatings = useCallback((): boolean => {
     const categories = cycle?.template?.categories ?? [];
@@ -179,7 +194,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
       />
 
       <div className="max-w-3xl space-y-6">
-        <DevelopmentContextPanel targetUserId={targetId} />
+        <DevelopmentContextPanel targetUserId={targetId} defaultExpanded />
 
         {categories.map((category: any) => (
           <Card key={category.id}>
@@ -212,6 +227,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
                       value={responses[criterion.id]?.rating ?? 0}
                       hasError={hasError}
                       onChange={(rating) => {
+                        hasInteracted.current = true;
                         setResponses((prev) => ({
                           ...prev,
                           [criterion.id]: { ...prev[criterion.id], rating, comment: prev[criterion.id]?.comment ?? "" },
@@ -228,12 +244,13 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
                       aria-label={`${criterion.name} 코멘트`}
                       placeholder="코멘트 (선택)"
                       value={responses[criterion.id]?.comment ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        hasInteracted.current = true;
                         setResponses((prev) => ({
                           ...prev,
                           [criterion.id]: { ...prev[criterion.id], rating: prev[criterion.id]?.rating ?? 0, comment: e.target.value },
-                        }))
-                      }
+                        }));
+                      }}
                       rows={2}
                     />
                   </div>
@@ -254,7 +271,7 @@ export default function WriteReviewPage({ params }: { params: { cycleId: string;
               aria-label="종합 의견"
               placeholder="전반적인 평가 의견을 작성해주세요."
               value={overallComment}
-              onChange={(e) => setOverallComment(e.target.value)}
+              onChange={(e) => { hasInteracted.current = true; setOverallComment(e.target.value); }}
               rows={4}
             />
           </CardContent>

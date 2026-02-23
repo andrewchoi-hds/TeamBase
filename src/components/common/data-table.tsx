@@ -32,6 +32,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   pageSize?: number;
   filters?: FilterConfig[];
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +42,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "검색...",
   pageSize = 10,
   filters,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -126,7 +128,11 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

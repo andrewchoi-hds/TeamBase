@@ -36,6 +36,12 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
   const existing = await prisma.review.findUnique({ where: { id: params.id } });
   if (!existing) return notFound("평가를 찾을 수 없습니다.");
   if (existing.authorId !== user.id) return forbidden();
+  if (existing.status === "SUBMITTED") {
+    return NextResponse.json(
+      { error: "제출된 평가는 수정할 수 없습니다. 관리자에게 재오픈을 요청하세요." },
+      { status: 400 }
+    );
+  }
 
   const data = await req.json();
 
