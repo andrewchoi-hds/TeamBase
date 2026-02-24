@@ -120,15 +120,46 @@ export const reviewService = {
   },
 
   async submitReview(reviewId: string, userId?: string) {
-    // RATING 유형 응답만 평균으로 overallRating 자동 계산
+    // RATING 유형 응답에 카테고리 가중치를 반영하여 overallRating 계산
     const responses = await prisma.reviewResponse.findMany({
       where: { reviewId },
-      select: { rating: true },
+      select: {
+        rating: true,
+        criterion: {
+          select: {
+            category: { select: { id: true, weight: true } },
+          },
+        },
+      },
     });
     const ratedResponses = responses.filter((r) => r.rating != null);
-    const overallRating = ratedResponses.length > 0
-      ? parseFloat((ratedResponses.reduce((sum, r) => sum + (r.rating as number), 0) / ratedResponses.length).toFixed(2))
-      : null;
+
+    let overallRating: number | null = null;
+    if (ratedResponses.length > 0) {
+      // 카테고리별 평균 점수 계산
+      const catScores: Record<string, { sum: number; count: number; weight: number }> = {};
+      for (const r of ratedResponses) {
+        const catId = r.criterion.category.id;
+        const catWeight = r.criterion.category.weight;
+        if (!catScores[catId]) catScores[catId] = { sum: 0, count: 0, weight: catWeight };
+        catScores[catId].sum += r.rating as number;
+        catScores[catId].count++;
+      }
+
+      const cats = Object.values(catScores);
+      const hasVariedWeights = cats.some((c) => c.weight !== 1.0);
+
+      if (hasVariedWeights && cats.length > 0) {
+        // 가중 평균: sum(catAvg * weight) / sum(weight)
+        const totalWeight = cats.reduce((sum, c) => sum + c.weight, 0);
+        overallRating = totalWeight > 0
+          ? parseFloat((cats.reduce((sum, c) => sum + (c.sum / c.count) * c.weight, 0) / totalWeight).toFixed(2))
+          : null;
+      } else {
+        // 기존 방식: 단순 평균
+        overallRating = parseFloat((ratedResponses.reduce((sum, r) => sum + (r.rating as number), 0) / ratedResponses.length).toFixed(2));
+      }
+    }
 
     const review = await prisma.review.update({
       where: { id: reviewId },

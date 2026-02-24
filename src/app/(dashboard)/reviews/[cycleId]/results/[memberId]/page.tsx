@@ -105,7 +105,14 @@ export default function MemberReviewResultPage({ params }: { params: Promise<{ c
             <div className="space-y-3">
               {report.categoryScores.map((cat) => (
                 <div key={cat.categoryId} className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{cat.categoryName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium">{cat.categoryName}</span>
+                    {cat.weight != null && cat.weight !== 1.0 && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                        x{cat.weight}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                       <div

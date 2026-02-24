@@ -31,7 +31,24 @@ async function handleGET(
   }
 
   const reviews = await reviewService.getReviewResults(params.id, params.memberId);
-  const report = aggregateReviewData(reviews as any);
+
+  // 템플릿 카테고리 가중치 조회
+  const cycle = await prisma.reviewCycle.findUnique({
+    where: { id: params.id },
+    select: {
+      template: {
+        select: {
+          categories: { select: { id: true, weight: true } },
+        },
+      },
+    },
+  });
+  const categoryWeights = cycle?.template?.categories?.map((c) => ({
+    categoryId: c.id,
+    weight: c.weight,
+  }));
+
+  const report = aggregateReviewData(reviews as any, categoryWeights);
 
   if (reviews.length > 0) {
     report.targetName = (reviews[0] as any).target?.name ?? "";

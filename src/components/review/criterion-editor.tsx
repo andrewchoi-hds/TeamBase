@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { X, ChevronUp, ChevronDown, Star, AlignLeft, CircleDot, CheckSquare } from "lucide-react";
 import { ChoiceListEditor } from "./choice-list-editor";
+import { RubricEditor } from "./rubric-editor";
 import { QUESTION_TYPES, type CriterionFormData } from "@/lib/types/review-template";
 import type { QuestionType } from "@prisma/client";
 
@@ -112,7 +113,19 @@ export function CriterionEditor({
       {isChoiceType && criterion.options?.choices && (
         <ChoiceListEditor
           choices={criterion.options.choices}
-          onChange={(choices) => onChange({ ...criterion, options: { choices } })}
+          onChange={(choices) => onChange({ ...criterion, options: { ...criterion.options, choices } })}
+        />
+      )}
+
+      {criterion.questionType === "RATING" && (
+        <RubricEditor
+          rubric={criterion.options?.rubric}
+          onChange={(rubric) =>
+            onChange({
+              ...criterion,
+              options: rubric ? { ...criterion.options, rubric } : criterion.options?.choices ? { choices: criterion.options.choices } : undefined,
+            })
+          }
         />
       )}
 

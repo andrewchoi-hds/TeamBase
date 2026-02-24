@@ -12,16 +12,20 @@ export interface ChoiceOption {
   value: string;
 }
 
+/** 1~5점 각 점수에 대한 채점 기준 텍스트 */
+export type RubricDefinition = Record<"1" | "2" | "3" | "4" | "5", string>;
+
 export interface CriterionFormData {
   name: string;
   description: string;
   questionType: QuestionType;
   isRequired: boolean;
-  options?: { choices: ChoiceOption[] };
+  options?: { choices?: ChoiceOption[]; rubric?: RubricDefinition };
 }
 
 export interface TemplateCategoryFormData {
   name: string;
+  weight?: number;
   criteria: CriterionFormData[];
 }
 

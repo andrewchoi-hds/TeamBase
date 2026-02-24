@@ -110,6 +110,7 @@ export default function ReviewTemplatesPage() {
               isSubmitting={createMutation.isPending}
               submitLabel="생성"
             />
+
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -174,8 +175,10 @@ export default function ReviewTemplatesPage() {
           {editTarget && (
             <TemplateEditor
               initialName={editTarget.name}
+              initialGuideline={editTarget.guideline ?? ""}
               initialCategories={editTarget.categories?.map((cat: any) => ({
                 name: cat.name,
+                weight: cat.weight ?? 1.0,
                 criteria: cat.criteria?.map((c: any) => ({
                   name: c.name,
                   description: c.description ?? "",

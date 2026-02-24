@@ -77,8 +77,8 @@ describe("ReviewService", () => {
   describe("submitReview", () => {
     it("평가를 제출하고 대상자에게 알림을 보낸다", async () => {
       vi.mocked(prisma.reviewResponse.findMany).mockResolvedValue([
-        { rating: 4 },
-        { rating: 5 },
+        { rating: 4, criterion: { category: { id: "cat-1", weight: 1.0 } } },
+        { rating: 5, criterion: { category: { id: "cat-1", weight: 1.0 } } },
       ] as any);
       vi.mocked(prisma.review.update).mockResolvedValue({
         id: "review-1",

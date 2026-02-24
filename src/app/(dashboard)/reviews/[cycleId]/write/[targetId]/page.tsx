@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DevelopmentContextPanel } from "@/components/review/development-context-panel";
+import { GuidelinePanel } from "@/components/review/guideline-panel";
 import { QuestionRenderer } from "@/components/review/question-renderer";
 import { validateResponse, QUESTION_TYPES, type ResponseValue } from "@/lib/types/review-template";
 import type { QuestionType } from "@prisma/client";
@@ -192,12 +193,22 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
       />
 
       <div className="max-w-3xl space-y-6">
+        {cycle.template?.guideline && (
+          <GuidelinePanel guideline={cycle.template.guideline} />
+        )}
         <DevelopmentContextPanel targetUserId={targetId} defaultExpanded />
 
         {categories.map((category: any) => (
           <Card key={category.id}>
             <CardHeader>
-              <CardTitle className="text-lg">{category.name}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+                {category.weight != null && category.weight !== 1.0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    가중치 {category.weight}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {category.criteria.map((criterion: any) => {

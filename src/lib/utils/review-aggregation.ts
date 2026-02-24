@@ -23,6 +23,7 @@ export interface CategoryScore {
   categoryName: string;
   scores: Record<string, number>; // reviewType -> average
   overall: number;
+  weight: number;
 }
 
 export interface CriterionScore {
@@ -51,7 +52,10 @@ function ratingResponses(responses: ReviewData["responses"]) {
   return responses.filter((resp) => resp.rating != null);
 }
 
-export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
+export function aggregateReviewData(
+  reviews: ReviewData[],
+  categoryWeights?: { categoryId: string; weight: number }[],
+): AggregatedReport {
   if (reviews.length === 0) {
     return {
       targetName: "",
@@ -106,6 +110,13 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
     });
   });
 
+  const weightMap: Record<string, number> = {};
+  if (categoryWeights) {
+    for (const cw of categoryWeights) {
+      weightMap[cw.categoryId] = cw.weight;
+    }
+  }
+
   const categoryScores: CategoryScore[] = Object.entries(catMap).map(([catId, typeScores]) => {
     const scores: Record<string, number> = {};
     let allRatings: number[] = [];
@@ -118,6 +129,7 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
       categoryName: catNames[catId],
       scores,
       overall: allRatings.reduce((a, b) => a + b, 0) / allRatings.length,
+      weight: weightMap[catId] ?? 1.0,
     };
   });
 
@@ -179,7 +191,7 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   const strengths = sorted.slice(0, 3);
   const weaknesses = sorted.slice(-3).reverse();
 
-  // 전체 평균 점수 계산 (overallRating 우선, 없으면 RATING 응답 평균으로 폴백)
+  // 전체 평균 점수 계산 (overallRating 우선, 없으면 카테고리 가중 평균으로 폴백)
   const overallRatings = reviews
     .filter((r) => r.overallRating != null)
     .map((r) => r.overallRating as number);
@@ -187,6 +199,12 @@ export function aggregateReviewData(reviews: ReviewData[]): AggregatedReport {
   let overallAvgScore: number;
   if (overallRatings.length > 0) {
     overallAvgScore = overallRatings.reduce((a, b) => a + b, 0) / overallRatings.length;
+  } else if (categoryWeights && categoryScores.length > 0) {
+    // 가중 평균: sum(cat.overall * weight) / sum(weight)
+    const totalWeight = categoryScores.reduce((sum, cat) => sum + cat.weight, 0);
+    overallAvgScore = totalWeight > 0
+      ? categoryScores.reduce((sum, cat) => sum + cat.overall * cat.weight, 0) / totalWeight
+      : 0;
   } else {
     const allResponseRatings = reviews.flatMap((r) => ratingResponses(r.responses).map((resp) => resp.rating as number));
     overallAvgScore = allResponseRatings.length > 0

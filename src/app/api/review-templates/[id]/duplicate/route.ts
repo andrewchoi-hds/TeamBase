@@ -24,6 +24,7 @@ async function handlePOST(_req: NextRequest, { params }: { params: { id: string 
     data: {
       name: `${original.name} (복사)`,
       description: original.description,
+      guideline: original.guideline,
       categories: {
         create: original.categories.map((cat) => ({
           name: cat.name,

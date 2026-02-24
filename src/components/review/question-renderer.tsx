@@ -4,32 +4,75 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { QuestionType } from "@prisma/client";
-import type { ResponseValue, ChoiceOption } from "@/lib/types/review-template";
+import type { ResponseValue, ChoiceOption, RubricDefinition } from "@/lib/types/review-template";
 
-function RatingScale({ value, onChange, label, hasError }: { value: number; onChange: (v: number) => void; label?: string; hasError?: boolean }) {
+function RatingScale({
+  value,
+  onChange,
+  label,
+  hasError,
+  rubric,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label?: string;
+  hasError?: boolean;
+  rubric?: RubricDefinition;
+}) {
+  const hasRubric = rubric && Object.values(rubric).some((v) => v);
+
   return (
-    <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          role="radio"
-          aria-checked={n === value}
-          aria-label={`${n}점`}
-          onClick={() => onChange(n)}
-          className={cn(
-            "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
-            n <= value
-              ? "bg-primary text-primary-foreground border-primary"
-              : "hover:bg-accent",
-            hasError && value === 0 && "border-destructive"
-          )}
-        >
-          {n}
-        </button>
-      ))}
+    <div className="space-y-2">
+      <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
+        {[1, 2, 3, 4, 5].map((n) => {
+          const btn = (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={n === value}
+              aria-label={`${n}점${hasRubric ? `: ${rubric[String(n) as keyof RubricDefinition]}` : ""}`}
+              onClick={() => onChange(n)}
+              className={cn(
+                "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
+                n <= value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "hover:bg-accent",
+                hasError && value === 0 && "border-destructive"
+              )}
+            >
+              {n}
+            </button>
+          );
+
+          if (hasRubric && rubric[String(n) as keyof RubricDefinition]) {
+            return (
+              <TooltipProvider key={n} delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p className="text-xs">{n}점: {rubric[String(n) as keyof RubricDefinition]}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          }
+          return btn;
+        })}
+      </div>
+      {hasRubric && value > 0 && rubric[String(value) as keyof RubricDefinition] && (
+        <p className="text-xs text-muted-foreground pl-1">
+          {value}점: {rubric[String(value) as keyof RubricDefinition]}
+        </p>
+      )}
     </div>
   );
 }
@@ -38,7 +81,7 @@ interface QuestionRendererProps {
   criterionId: string;
   criterionName: string;
   questionType: QuestionType;
-  options?: { choices: ChoiceOption[] } | null;
+  options?: { choices?: ChoiceOption[]; rubric?: RubricDefinition } | null;
   value: ResponseValue;
   onChange: (value: ResponseValue) => void;
   hasError?: boolean;
@@ -61,6 +104,7 @@ export function QuestionRenderer({
             label={`${criterionName} 평가 점수`}
             value={value.rating ?? 0}
             hasError={hasError}
+            rubric={options?.rubric}
             onChange={(rating) => onChange({ ...value, rating })}
           />
           <Textarea

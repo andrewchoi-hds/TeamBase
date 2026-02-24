@@ -155,6 +155,7 @@ model ReviewTemplate {
   id          String   @id @default(cuid())
   name        String
   description String?
+  guideline   String?  @db.Text
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

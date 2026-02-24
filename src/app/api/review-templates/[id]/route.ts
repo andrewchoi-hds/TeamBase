@@ -40,9 +40,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
         data: {
           ...(data.name && { name: data.name }),
           ...(data.description !== undefined && { description: data.description }),
+          ...(data.guideline !== undefined && { guideline: data.guideline ?? null }),
           categories: {
             create: data.categories.map((cat: any, ci: number) => ({
               name: cat.name,
+              weight: cat.weight ?? 1.0,
               order: ci,
               criteria: {
                 create: cat.criteria.map((c: any, cri: number) => ({
@@ -77,6 +79,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
     data: {
       ...(data.name && { name: data.name }),
       ...(data.description !== undefined && { description: data.description }),
+      ...(data.guideline !== undefined && { guideline: data.guideline ?? null }),
       ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
     },
   });

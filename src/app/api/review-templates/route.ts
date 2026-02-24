@@ -32,6 +32,7 @@ async function handlePOST(req: NextRequest) {
     data: {
       name: data.name,
       description: data.description,
+      guideline: data.guideline ?? null,
       categories: {
         create: data.categories?.map((cat: { name: string; weight?: number; order?: number; criteria?: { name: string; description?: string; order?: number }[] }, i: number) => ({
           name: cat.name,
