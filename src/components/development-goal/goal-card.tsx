@@ -41,12 +41,28 @@ const sourceLabels: Record<string, string> = {
 export function GoalCard({ goal, editable = false, compact = false }: GoalCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [progress, setProgress] = useState(goal.progress);
+  const [progressInput, setProgressInput] = useState(String(goal.progress));
   const queryClient = useQueryClient();
 
   // 서버 데이터 refetch 후 로컬 상태 동기화
   useEffect(() => {
-    if (!isEditing) setProgress(goal.progress);
+    if (!isEditing) {
+      setProgress(goal.progress);
+      setProgressInput(String(goal.progress));
+    }
   }, [goal.progress, isEditing]);
+
+  const handleProgressChange = (value: string) => {
+    const cleaned = value.replace(/[^0-9]/g, "");
+    if (cleaned === "") {
+      setProgressInput("");
+      setProgress(0);
+      return;
+    }
+    const num = Math.min(100, Math.max(0, parseInt(cleaned, 10)));
+    setProgressInput(String(num));
+    setProgress(num);
+  };
 
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -75,11 +91,10 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
           {editable && goal.status === "ACTIVE" && isEditing ? (
             <div className="flex items-center gap-1">
               <Input
-                type="number"
-                min={0}
-                max={100}
-                value={progress}
-                onChange={(e) => setProgress(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                value={progressInput}
+                onChange={(e) => handleProgressChange(e.target.value)}
                 className="w-14 h-6 text-xs"
               />
               <Button
@@ -94,7 +109,7 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6"
-                onClick={() => { setIsEditing(false); setProgress(goal.progress); }}
+                onClick={() => { setIsEditing(false); setProgress(goal.progress); setProgressInput(String(goal.progress)); }}
               >
                 <XCircle className="h-3 w-3" />
               </Button>
@@ -153,11 +168,10 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
               {isEditing ? (
                 <div className="flex items-center gap-1">
                   <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={progress}
-                    onChange={(e) => setProgress(Number(e.target.value))}
+                    type="text"
+                    inputMode="numeric"
+                    value={progressInput}
+                    onChange={(e) => handleProgressChange(e.target.value)}
                     className="w-16 h-7 text-xs"
                   />
                   <Button
@@ -172,7 +186,7 @@ export function GoalCard({ goal, editable = false, compact = false }: GoalCardPr
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7"
-                    onClick={() => { setIsEditing(false); setProgress(goal.progress); }}
+                    onClick={() => { setIsEditing(false); setProgress(goal.progress); setProgressInput(String(goal.progress)); }}
                   >
                     <XCircle className="h-3.5 w-3.5" />
                   </Button>

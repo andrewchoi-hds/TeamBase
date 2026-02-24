@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/common/date-picker";
 import { toast } from "sonner";
 import { Loader2, Target } from "lucide-react";
 
@@ -41,7 +42,7 @@ export function CreateGoalDialog({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState("");
-  const [targetDate, setTargetDate] = useState("");
+  const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
@@ -61,7 +62,7 @@ export function CreateGoalDialog({
   const resetForm = () => {
     setTitle(defaultTitle);
     setDescription("");
-    setTargetDate("");
+    setTargetDate(undefined);
   };
 
   const handleSubmit = () => {
@@ -74,7 +75,7 @@ export function CreateGoalDialog({
       description: description.trim() || undefined,
       sourceType,
       sourceCycleId,
-      targetDate: targetDate || undefined,
+      targetDate: targetDate ? targetDate.toISOString() : undefined,
       feedbackIds,
     });
   };
@@ -123,12 +124,12 @@ export function CreateGoalDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="goal-target-date">목표 달성일</Label>
-            <Input
-              id="goal-target-date"
-              type="date"
+            <Label>목표 달성일</Label>
+            <DatePicker
               value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
+              onChange={setTargetDate}
+              placeholder="달성 목표일 선택"
+              fromDate={new Date()}
             />
           </div>
         </div>
