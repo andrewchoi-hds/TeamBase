@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 const ReviewRadarChart = dynamic(() => import("@/components/review/radar-chart").then(m => m.ReviewRadarChart), { ssr: false });
 import { GapAnalysis } from "@/components/review/gap-analysis";
 import { StrengthWeakness } from "@/components/review/strength-weakness";
+import { AiSummaryCard } from "@/components/review/ai-summary-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -90,6 +91,9 @@ export default function MemberReviewResultPage({ params }: { params: Promise<{ c
           </Card>
         ))}
       </div>
+
+      {/* AI Summary */}
+      <AiSummaryCard cycleId={cycleId} memberId={memberId} />
 
       {/* Radar Chart */}
       {report.radarData.length > 0 && <ReviewRadarChart data={report.radarData} />}

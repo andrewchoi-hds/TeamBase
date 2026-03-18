@@ -53,3 +53,37 @@ export interface NavItem {
   roles?: Role[];
   badge?: number;
 }
+
+export interface AssignmentUser {
+  id: string;
+  name: string;
+  position?: string;
+  department?: { id: string; name: string } | null;
+}
+
+export interface Assignment {
+  id: string;
+  reviewerId: string;
+  targetId: string;
+  reviewType: string;
+  status: string;
+  reviewer: AssignmentUser;
+  target: AssignmentUser;
+  review?: {
+    id: string;
+    overallRating?: number | null;
+  } | null;
+}
+
+export interface ReviewCycleDetail {
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  assignments?: Assignment[];
+  assignmentRules?: {
+    strategies?: string[];
+  };
+}

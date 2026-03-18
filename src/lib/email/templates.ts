@@ -59,12 +59,20 @@ const EMAIL_TEMPLATES: Partial<Record<NotificationType, (input: TemplateInput) =
       <p style="font-size:14px;color:#52525b;line-height:1.6;">${message}</p>
       ${link ? button("평가 수정하기", link) : ""}
     `),
+
+  KUDOS_RECEIVED: ({ message, link }) =>
+    layout(`
+      <h2 style="font-size:16px;color:#16a34a;margin:0 0 12px;">칭찬을 받았습니다! 🎉</h2>
+      <p style="font-size:14px;color:#52525b;line-height:1.6;">${message}</p>
+      ${link ? button("확인하기", link) : ""}
+    `),
 };
 
 export const EMAIL_TYPES: NotificationType[] = [
   "REVIEW_REQUESTED",
   "REVIEW_CYCLE_ENDING",
   "REVIEW_REOPENED",
+  "KUDOS_RECEIVED",
 ];
 
 export function getEmailTemplate(type: NotificationType, input: TemplateInput): string | null {

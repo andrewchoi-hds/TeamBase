@@ -9,20 +9,15 @@ import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck, Trophy } from "lucide-react";
 import { StatusBadge } from "@/components/common/status-badge";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
 import Link from "next/link";
 import { GoalCard } from "@/components/development-goal/goal-card";
 import { CreateGoalDialog } from "@/components/development-goal/create-goal-dialog";
-
-const reviewTypeLabels: Record<string, string> = {
-  SELF: "자기평가",
-  PEER: "동료평가",
-  UPWARD: "상향평가",
-  DOWNWARD: "하향평가",
-};
+import { KudosFeed } from "@/components/kudos/kudos-feed";
+import { reviewTypeLabels } from "@/lib/constants/review";
+import { scoreToGrade } from "@/lib/utils/grade-mapping";
+import { differenceInCalendarDays } from "date-fns";
 
 export default function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -76,7 +71,7 @@ export default function DashboardPage() {
       />
 
       {/* Personal Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           title="진행중인 평가"
           value={stats?.pendingAssignments ?? 0}
@@ -94,6 +89,12 @@ export default function DashboardPage() {
           value={`${stats?.avgOkrProgress ?? 0}%`}
           description="개선 목표"
           icon={<Target className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Kudos"
+          value={stats?.kudosReceived ?? 0}
+          description="받은 칭찬"
+          icon={<Sparkles className="h-5 w-5" />}
         />
       </div>
 
@@ -133,11 +134,19 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-muted-foreground truncate">{a.cycle?.name}</span>
-                          {a.cycle?.endDate && (
-                            <span className="text-xs text-muted-foreground">
-                              마감 {format(new Date(a.cycle.endDate), "M/d", { locale: ko })}
-                            </span>
-                          )}
+                          {a.cycle?.endDate && (() => {
+                            const dDay = differenceInCalendarDays(new Date(a.cycle.endDate), new Date());
+                            const isUrgent = dDay <= 3;
+                            const isOverdue = dDay < 0;
+                            return (
+                              <Badge
+                                variant={isOverdue ? "destructive" : isUrgent ? "default" : "secondary"}
+                                className={`text-xs ${isUrgent && !isOverdue ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}`}
+                              >
+                                {isOverdue ? `D+${Math.abs(dDay)}` : dDay === 0 ? "D-Day" : `D-${dDay}`}
+                              </Badge>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -148,6 +157,69 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 내 평가 결과 */}
+      {(stats?.myResults?.length ?? 0) > 0 && (
+        <div className="mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">내 평가 결과</CardTitle>
+              </div>
+              <Link
+                href="/reviews"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                전체보기
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                {stats.myResults.map((result: any) => {
+                  const grade = result.avgScore != null ? scoreToGrade(result.avgScore) : null;
+                  return (
+                    <div
+                      key={result.cycleId}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-background"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium truncate">{result.cycleName}</span>
+                          {grade && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${grade.bgColor} ${grade.textColor}`}>
+                              {grade.grade}
+                            </span>
+                          )}
+                          {result.avgScore != null && (
+                            <span className="text-sm text-muted-foreground">{result.avgScore}점</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {Object.entries(result.typeScores as Record<string, number>).map(([type, score]) => (
+                            <span key={type} className="text-xs text-muted-foreground">
+                              {reviewTypeLabels[type] ?? type} {score}
+                            </span>
+                          ))}
+                          <span className="text-xs text-muted-foreground">
+                            · {result.totalReviews}건
+                          </span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/reviews/${result.cycleId}/results/${user?.id}`}>
+                          리포트 보기
+                        </Link>
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -267,6 +339,11 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* 동료 칭찬 */}
+      <div className="mb-8">
+        <KudosFeed />
       </div>
 
       {/* 최근 알림 */}

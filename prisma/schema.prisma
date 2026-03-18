@@ -42,7 +42,10 @@ model User {
   reviewAssignmentsAsTarget   ReviewAssignment[] @relation("ReviewTarget")
   reviewsWritten              Review[]           @relation("ReviewAuthor")
   reviewsReceived             Review[]           @relation("ReviewTarget")
+  reviewSummaries             ReviewSummary[]    @relation("SummaryTarget")
 
+  kudosSent        Kudos[]          @relation("KudosSender")
+  kudosReceived    Kudos[]          @relation("KudosReceiver")
   notifications    Notification[]
   accessLogsViewer AccessLog[] @relation("AccessLogViewer")
   accessLogsTarget AccessLog[] @relation("AccessLogTarget")
@@ -146,6 +149,7 @@ model ReviewCycle {
   template    ReviewTemplate?    @relation(fields: [templateId], references: [id])
   assignments ReviewAssignment[]
   reviews     Review[]
+  reviewSummaries  ReviewSummary[]
   developmentGoals DevelopmentGoal[]
 
   @@index([status])
@@ -297,6 +301,7 @@ enum NotificationType {
   REVIEW_REOPENED
   FEEDBACK_RECEIVED
   ACCESS_LOG_ALERT
+  KUDOS_RECEIVED
 }
 
 model Notification {
@@ -506,4 +511,41 @@ model FeedbackSessionResponse {
 
   @@index([targetId])
   @@index([authorId])
+}
+
+// ============================================
+// AI Review Summary (cache)
+// ============================================
+
+model ReviewSummary {
+  id        String   @id @default(cuid())
+  cycleId   String
+  targetId  String
+  content   String   @db.Text // JSON: { strengths, improvements, overall }
+  createdAt DateTime @default(now())
+
+  cycle  ReviewCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  target User        @relation("SummaryTarget", fields: [targetId], references: [id])
+
+  @@unique([cycleId, targetId])
+  @@index([targetId])
+}
+
+// ============================================
+// Kudos (Peer Recognition)
+// ============================================
+
+model Kudos {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  message    String   @db.Text
+  tags       Json?
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("KudosSender", fields: [senderId], references: [id])
+  receiver User @relation("KudosReceiver", fields: [receiverId], references: [id])
+
+  @@index([receiverId])
+  @@index([createdAt])
 }

@@ -7,13 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Clock, AlertCircle, Ban } from "lucide-react";
-
-const reviewTypeLabels: Record<string, string> = {
-  SELF: "자기평가",
-  PEER: "동료평가",
-  UPWARD: "상향평가",
-  DOWNWARD: "하향평가",
-};
+import { reviewTypeLabels } from "@/lib/constants/review";
 
 interface StatusSummary {
   progress: {

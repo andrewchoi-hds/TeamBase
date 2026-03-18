@@ -13,6 +13,7 @@ vi.mock("@/lib/prisma", () => ({
     reviewAssignment: { count: vi.fn() },
     feedbackSessionResponse: { count: vi.fn() },
     developmentGoal: { findMany: vi.fn() },
+    reviewCycle: { findMany: vi.fn() },
   },
 }));
 
@@ -44,6 +45,18 @@ describe("Dashboard Personal API", () => {
       { progress: 50 },
       { progress: 80 },
     ] as any);
+    vi.mocked(prisma.reviewCycle.findMany).mockResolvedValue([
+      {
+        id: "cycle-1",
+        name: "2026 상반기 평가",
+        status: "COMPLETED",
+        endDate: new Date("2026-06-30"),
+        assignments: [
+          { reviewType: "PEER", review: { overallRating: 4.2 } },
+          { reviewType: "DOWNWARD", review: { overallRating: 3.8 } },
+        ],
+      },
+    ] as any);
 
     const { GET } = await import("@/app/api/dashboard/personal/route");
     const res = await GET(new Request("http://localhost/api/dashboard/personal") as any, { params: {} } as any);
@@ -53,5 +66,9 @@ describe("Dashboard Personal API", () => {
     expect(body.completedAssignments).toBe(5);
     expect(body.feedbackReceived).toBe(3);
     expect(body.avgOkrProgress).toBe(65);
+    expect(body.myResults).toHaveLength(1);
+    expect(body.myResults[0].cycleName).toBe("2026 상반기 평가");
+    expect(body.myResults[0].avgScore).toBe(4);
+    expect(body.myResults[0].typeScores).toEqual({ PEER: 4.2, DOWNWARD: 3.8 });
   });
 });

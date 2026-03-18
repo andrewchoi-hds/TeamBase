@@ -4,9 +4,20 @@ import bcrypt from "bcryptjs";
 import { getCurrentUser, unauthorized, forbidden } from "@/lib/auth-utils";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 
-async function handleGET() {
+async function handleGET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
+
+  const isSimple = req.nextUrl.searchParams.get("simple") === "true";
+
+  if (isSimple) {
+    const users = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, position: true },
+      orderBy: { name: "asc" },
+    });
+    return NextResponse.json(users);
+  }
 
   const users = await prisma.user.findMany({
     where: { isActive: true },
