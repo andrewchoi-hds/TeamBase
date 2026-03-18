@@ -6,7 +6,8 @@ import { api } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Sparkles, Loader2, CheckCircle, AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
 
 interface SummaryContent {
   strengths: string[];
@@ -49,7 +50,21 @@ export function AiSummaryCard({ cycleId, memberId }: AiSummaryCardProps) {
 
   const summary = data?.summary?.content;
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // 요약이 없는 경우 생성 버튼 표시
   if (!summary) {
@@ -87,7 +102,27 @@ export function AiSummaryCard({ cycleId, memberId }: AiSummaryCardProps) {
             </Button>
           </div>
           {error && (
-            <p className="text-xs text-destructive mt-3">{error}</p>
+            <div className="flex items-start gap-2 mt-3 p-2.5 rounded-md bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-destructive font-medium">요약 생성에 실패했습니다</p>
+                <p className="text-xs text-destructive/80 mt-0.5">
+                  {error.includes("API") || error.includes("key")
+                    ? "AI 서비스 연결에 문제가 있습니다. 관리자에게 문의하세요."
+                    : error.includes("review") || error.includes("평가")
+                      ? "분석할 평가 데이터가 충분하지 않습니다."
+                      : error}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setError(null); generateMutation.mutate(); }}
+                  className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 font-medium mt-1.5"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  다시 시도
+                </button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

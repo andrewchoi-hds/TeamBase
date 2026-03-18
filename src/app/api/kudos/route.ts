@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
 import { notificationService } from "@/lib/services/notification.service";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { KUDOS_TAGS, type KudosTagValue } from "@/lib/constants/kudos-tags";
+
+const VALID_TAG_VALUES = new Set<string>(KUDOS_TAGS.map((t) => t.value));
+const MAX_MESSAGE_LENGTH = 500;
+const MAX_TAGS = 5;
 
 async function handleGET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -41,8 +46,27 @@ async function handlePOST(req: NextRequest) {
     return badRequest("대상자와 메시지는 필수입니다.");
   }
 
+  const trimmedMessage = message.trim();
+  if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
+    return badRequest(`메시지는 ${MAX_MESSAGE_LENGTH}자 이하로 작성해주세요.`);
+  }
+
   if (receiverId === user.id) {
     return badRequest("자기 자신에게는 칭찬을 보낼 수 없습니다.");
+  }
+
+  // 태그 유효성 검증
+  if (tags != null) {
+    if (!Array.isArray(tags)) {
+      return badRequest("태그는 배열 형식이어야 합니다.");
+    }
+    if (tags.length > MAX_TAGS) {
+      return badRequest(`태그는 최대 ${MAX_TAGS}개까지 선택할 수 있습니다.`);
+    }
+    const invalidTags = tags.filter((t: string) => !VALID_TAG_VALUES.has(t));
+    if (invalidTags.length > 0) {
+      return badRequest(`유효하지 않은 태그: ${invalidTags.join(", ")}`);
+    }
   }
 
   const receiver = await prisma.user.findUnique({
@@ -57,7 +81,7 @@ async function handlePOST(req: NextRequest) {
     data: {
       senderId: user.id,
       receiverId,
-      message: message.trim(),
+      message: trimmedMessage,
       tags: tags ?? null,
     },
     include: {

@@ -18,9 +18,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, ChevronDown, FileCheck, Star, AlignLeft, CircleDot, CheckSquare, Users } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronDown, Eye, FileCheck, Star, AlignLeft, CircleDot, CheckSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { QuestionRenderer } from "@/components/review/question-renderer";
+import type { ResponseValue } from "@/lib/types/review-template";
 import {
   STRATEGIES,
   PRESETS,
@@ -66,6 +70,10 @@ export default function NewReviewCyclePage() {
   // Step 4: 배정 규칙
   const [selectedStrategies, setSelectedStrategies] = useState<Set<Strategy>>(new Set());
   const [skipAssignment, setSkipAssignment] = useState(false);
+
+  // Step 3: 문항 체험 모드
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [previewResponses, setPreviewResponses] = useState<Record<string, ResponseValue>>({});
 
   // Step 5: 대상자 선택
   const [targetScope, setTargetScope] = useState<"all" | "manual">("all");
@@ -437,7 +445,23 @@ export default function NewReviewCyclePage() {
                         {/* 선택된 템플릿 문항 미리보기 */}
                         {isSelected && t.categories?.length > 0 && (
                           <div className="border border-t-0 border-foreground rounded-b-lg bg-muted/30 p-3 space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground px-1">문항 미리보기</p>
+                            <div className="flex items-center justify-between px-1">
+                              <p className="text-xs font-medium text-muted-foreground">문항 미리보기</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1.5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewResponses({});
+                                  setPreviewTemplateId(t.id);
+                                }}
+                              >
+                                <Eye className="h-3 w-3" />
+                                미리 풀어보기
+                              </Button>
+                            </div>
                             {t.categories.map((cat: any) => (
                               <Collapsible key={cat.id} defaultOpen>
                                 <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-background border text-left text-sm font-medium hover:bg-accent/50 transition-colors group">
@@ -500,6 +524,64 @@ export default function NewReviewCyclePage() {
             )}
           </section>
         )}
+
+        {/* 템플릿 문항 체험 모드 Dialog */}
+        {previewTemplateId && (() => {
+          const t = templates?.find((tpl: any) => tpl.id === previewTemplateId);
+          if (!t) return null;
+          return (
+            <Dialog open={!!previewTemplateId} onOpenChange={() => setPreviewTemplateId(null)}>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    {t.name} — 문항 체험
+                  </DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    평가자가 실제로 보게 될 화면입니다. 입력 내용은 저장되지 않습니다.
+                  </p>
+                </DialogHeader>
+                <div className="space-y-6 pt-2">
+                  {t.categories?.map((cat: any) => (
+                    <div key={cat.id}>
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                        <h3 className="text-sm font-semibold">{cat.name}</h3>
+                        {cat.weight != null && cat.weight !== 1 && (
+                          <Badge variant="outline" className="text-[10px]">가중치 {cat.weight}</Badge>
+                        )}
+                      </div>
+                      <div className="space-y-5">
+                        {cat.criteria?.map((criterion: any) => (
+                          <div key={criterion.id} className="space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium">{criterion.name}</span>
+                              {criterion.isRequired && (
+                                <span className="text-destructive text-xs">*</span>
+                              )}
+                            </div>
+                            {criterion.description && (
+                              <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                            )}
+                            <QuestionRenderer
+                              criterionId={criterion.id}
+                              criterionName={criterion.name}
+                              questionType={criterion.questionType}
+                              options={criterion.options}
+                              value={previewResponses[criterion.id] ?? {}}
+                              onChange={(val) =>
+                                setPreviewResponses((prev) => ({ ...prev, [criterion.id]: val }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
 
         {/* Step 4: 배정 규칙 선택 */}
         {currentStep === 3 && (
