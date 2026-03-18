@@ -18,8 +18,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, FileCheck, Users } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronDown, FileCheck, Star, AlignLeft, CircleDot, CheckSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   STRATEGIES,
   PRESETS,
@@ -379,36 +380,116 @@ export default function NewReviewCyclePage() {
                   평가 기준이 사전 정의된 템플릿을 선택하세요. 선택하지 않아도 됩니다.
                 </p>
                 <div className="grid grid-cols-1 gap-2">
-                  {templates.map((t: any) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setValue("templateId", watch("templateId") === t.id ? "" : t.id)}
-                      className={cn(
-                        "flex items-start gap-3 p-4 rounded-lg border text-left transition-all duration-150",
-                        "hover:border-foreground/30",
-                        watch("templateId") === t.id
-                          ? "bg-foreground text-background border-foreground shadow-sm"
-                          : "bg-background border-border"
-                      )}
-                    >
-                      <FileCheck className={cn(
-                        "h-4 w-4 mt-0.5 shrink-0",
-                        watch("templateId") === t.id ? "text-background/70" : "text-muted-foreground"
-                      )} />
-                      <div>
-                        <span className="text-sm font-medium">{t.name}</span>
-                        {t.description && (
-                          <p className={cn(
-                            "text-xs mt-0.5",
-                            watch("templateId") === t.id ? "text-background/70" : "text-muted-foreground"
-                          )}>
-                            {t.description}
-                          </p>
+                  {templates.map((t: any) => {
+                    const isSelected = watch("templateId") === t.id;
+                    const totalCriteria = t.categories?.reduce((sum: number, cat: any) => sum + (cat.criteria?.length ?? 0), 0) ?? 0;
+                    const QUESTION_TYPE_ICON: Record<string, React.ReactNode> = {
+                      RATING: <Star className="h-3 w-3" />,
+                      TEXT: <AlignLeft className="h-3 w-3" />,
+                      SINGLE_CHOICE: <CircleDot className="h-3 w-3" />,
+                      MULTI_CHOICE: <CheckSquare className="h-3 w-3" />,
+                    };
+                    const QUESTION_TYPE_LABEL: Record<string, string> = {
+                      RATING: "평점",
+                      TEXT: "서술형",
+                      SINGLE_CHOICE: "단일 선택",
+                      MULTI_CHOICE: "복수 선택",
+                    };
+
+                    return (
+                      <div key={t.id} className="space-y-0">
+                        <button
+                          type="button"
+                          onClick={() => setValue("templateId", isSelected ? "" : t.id)}
+                          className={cn(
+                            "w-full flex items-start gap-3 p-4 rounded-lg border text-left transition-all duration-150",
+                            "hover:border-foreground/30",
+                            isSelected
+                              ? "bg-foreground text-background border-foreground shadow-sm rounded-b-none"
+                              : "bg-background border-border"
+                          )}
+                        >
+                          <FileCheck className={cn(
+                            "h-4 w-4 mt-0.5 shrink-0",
+                            isSelected ? "text-background/70" : "text-muted-foreground"
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium">{t.name}</span>
+                              <span className={cn(
+                                "text-xs shrink-0",
+                                isSelected ? "text-background/70" : "text-muted-foreground"
+                              )}>
+                                {t.categories?.length ?? 0}개 카테고리 · {totalCriteria}개 문항
+                              </span>
+                            </div>
+                            {t.description && (
+                              <p className={cn(
+                                "text-xs mt-0.5",
+                                isSelected ? "text-background/70" : "text-muted-foreground"
+                              )}>
+                                {t.description}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* 선택된 템플릿 문항 미리보기 */}
+                        {isSelected && t.categories?.length > 0 && (
+                          <div className="border border-t-0 border-foreground rounded-b-lg bg-muted/30 p-3 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground px-1">문항 미리보기</p>
+                            {t.categories.map((cat: any) => (
+                              <Collapsible key={cat.id} defaultOpen>
+                                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-background border text-left text-sm font-medium hover:bg-accent/50 transition-colors group">
+                                  <div className="flex items-center gap-2">
+                                    <span>{cat.name}</span>
+                                    {cat.weight != null && cat.weight !== 1 && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        가중치 {cat.weight}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">{cat.criteria?.length ?? 0}개 문항</span>
+                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                  </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-1 space-y-0.5 pl-1">
+                                    {cat.criteria?.map((criterion: any, idx: number) => (
+                                      <div
+                                        key={criterion.id}
+                                        className="flex items-start gap-2.5 px-3 py-2 rounded-md text-sm"
+                                      >
+                                        <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0 text-right">{idx + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-muted-foreground">
+                                              {QUESTION_TYPE_ICON[criterion.questionType] ?? null}
+                                            </span>
+                                            <span className="font-medium">{criterion.name}</span>
+                                            {criterion.isRequired && (
+                                              <span className="text-destructive text-xs">*</span>
+                                            )}
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {QUESTION_TYPE_LABEL[criterion.questionType] ?? criterion.questionType}
+                                            </span>
+                                          </div>
+                                          {criterion.description && (
+                                            <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (
