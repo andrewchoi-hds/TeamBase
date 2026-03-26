@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { KUDOS_TAGS, type KudosTagValue } from "@/lib/constants/kudos-tags";
+import { KUDOS_TAGS } from "@/lib/constants/kudos-tags";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 

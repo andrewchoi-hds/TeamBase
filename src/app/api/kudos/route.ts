@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser, unauthorized, badRequest } from "@/lib/auth-utils";
 import { notificationService } from "@/lib/services/notification.service";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { KUDOS_TAGS, type KudosTagValue } from "@/lib/constants/kudos-tags";
+import { KUDOS_TAGS } from "@/lib/constants/kudos-tags";
 
 const VALID_TAG_VALUES = new Set<string>(KUDOS_TAGS.map((t) => t.value));
 const MAX_MESSAGE_LENGTH = 500;
