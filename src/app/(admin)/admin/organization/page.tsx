@@ -362,31 +362,113 @@ export default function OrganizationPage() {
 
       {/* 팀원 추가 다이얼로그 */}
       <Dialog open={assignOpen} onOpenChange={(o) => { setAssignOpen(o); if (!o) setAssignUserId(""); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>팀원 추가</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {departments?.find((d) => d.id === assignDeptId)?.name}에 배치할 사용자를 선택하세요.
-          </p>
-          <Select value={assignUserId} onValueChange={setAssignUserId}>
-            <SelectTrigger><SelectValue placeholder="사용자 선택" /></SelectTrigger>
-            <SelectContent>
-              {allUsers
-                ?.filter((u) => u.departmentId !== assignDeptId)
-                .map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} {u.department ? `(${u.department.name})` : "(미배치)"}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          <Button
-            className="w-full"
-            disabled={!assignUserId || assignUserMutation.isPending}
-            onClick={() => assignUserMutation.mutate({ userId: assignUserId, departmentId: assignDeptId })}
-          >
-            {assignUserMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            배치
-          </Button>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {departments?.find((d) => d.id === assignDeptId)?.name}에 팀원 추가
+            </DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const candidates = allUsers?.filter((u) => u.departmentId !== assignDeptId) ?? [];
+            const unassigned = candidates.filter((u) => !u.departmentId);
+            const fromOther = candidates.filter((u) => u.departmentId);
+            const selectedUser = candidates.find((u) => u.id === assignUserId);
+
+            return (
+              <div className="space-y-3">
+                {/* 선택된 사용자 + 이동 경고 */}
+                {selectedUser && selectedUser.departmentId && (
+                  <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                      <strong>{selectedUser.name}</strong>은(는) 현재 <strong>{selectedUser.department?.name}</strong> 소속입니다.
+                      배치하면 기존 부서에서 이동됩니다.
+                    </p>
+                  </div>
+                )}
+
+                <div className="max-h-[300px] overflow-y-auto space-y-3">
+                  {/* 미배치 사용자 */}
+                  {unassigned.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5 px-1">미배치</p>
+                      <div className="space-y-0.5">
+                        {unassigned.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => setAssignUserId(u.id)}
+                            className={`w-full flex items-center gap-2.5 py-2 px-2.5 rounded-md text-left transition-colors ${
+                              assignUserId === u.id
+                                ? "bg-primary/10 border border-primary/30"
+                                : "hover:bg-muted/60 border border-transparent"
+                            }`}
+                          >
+                            <Avatar className="h-7 w-7 shrink-0">
+                              <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+                                {u.name?.slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{u.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{u.position ?? u.email}</p>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">신규 배치</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 타 부서 사용자 */}
+                  {fromOther.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5 px-1">타 부서 (이동)</p>
+                      <div className="space-y-0.5">
+                        {fromOther.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => setAssignUserId(u.id)}
+                            className={`w-full flex items-center gap-2.5 py-2 px-2.5 rounded-md text-left transition-colors ${
+                              assignUserId === u.id
+                                ? "bg-primary/10 border border-primary/30"
+                                : "hover:bg-muted/60 border border-transparent"
+                            }`}
+                          >
+                            <Avatar className="h-7 w-7 shrink-0">
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                {u.name?.slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{u.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{u.position ?? u.email}</p>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0 border-amber-300 text-amber-600 dark:text-amber-400">
+                              {u.department?.name} → 이동
+                            </Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {candidates.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">배치 가능한 사용자가 없습니다.</p>
+                  )}
+                </div>
+
+                <Button
+                  className="w-full"
+                  disabled={!assignUserId || assignUserMutation.isPending}
+                  onClick={() => assignUserMutation.mutate({ userId: assignUserId, departmentId: assignDeptId })}
+                >
+                  {assignUserMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {selectedUser?.departmentId ? `${selectedUser.department?.name}에서 이동` : "배치"}
+                </Button>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
