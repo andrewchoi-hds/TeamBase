@@ -21,7 +21,7 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  passwordHash String
+  passwordHash String?
   role         Role     @default(MEMBER)
   position     String?
   profileImage String?
@@ -30,6 +30,10 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // SSO
+  ssoProvider String?
+  ssoId       String?  @unique
 
   department   Department? @relation(fields: [departmentId], references: [id])
   manager      User?       @relation("ManagerSubordinates", fields: [managerId], references: [id])
