@@ -331,10 +331,16 @@ export default function NewReviewCyclePage() {
                 onSelect={handleQuarterSelect}
               />
             </div>
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
+              <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                <strong>평가 실시 기간</strong>을 설정합니다. 이 기간 동안 평가자가 평가를 작성하고 제출할 수 있습니다.
+                시작일에 평가가 열리고, 종료일에 마감됩니다.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cycle-start-date" className="text-sm font-medium">
-                  시작일 <span className="text-destructive">*</span>
+                  평가 시작일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-start-date"
@@ -349,7 +355,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cycle-end-date" className="text-sm font-medium">
-                  종료일 <span className="text-destructive">*</span>
+                  평가 마감일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-end-date"

@@ -18,8 +18,8 @@ export interface GeneratedAssignment {
 export const STRATEGIES: { key: Strategy; label: string; description: string }[] = [
   { key: "self", label: "전원 자기평가", description: "선택된 모든 인원이 자기평가를 수행합니다" },
   { key: "peer", label: "동료 상호평가", description: "선택된 인원 간 서로 평가합니다" },
-  { key: "downward", label: "매니저 → 부하 평가", description: "매니저가 직속 부하를 평가합니다" },
-  { key: "upward", label: "부하 → 매니저 평가", description: "부하가 직속 매니저를 평가합니다" },
+  { key: "downward", label: "리더 → 팀원 평가", description: "리더가 직속 팀원을 평가합니다" },
+  { key: "upward", label: "팀원 → 리더 평가", description: "팀원이 직속 리더를 평가합니다" },
   { key: "department_peer", label: "부서별 동료평가", description: "같은 부서 내에서 서로 평가합니다" },
 ];
 

@@ -64,7 +64,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               {member.manager && (
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span>매니저: {member.manager.name}</span>
+                  <span>리더: {member.manager.name}</span>
                 </div>
               )}
             </div>
@@ -91,7 +91,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   <p className="font-medium">{member.department?.name ?? "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">직속 매니저</p>
+                  <p className="text-muted-foreground">직속 리더</p>
                   <p className="font-medium">{member.manager?.name ?? "-"}</p>
                 </div>
               </div>
