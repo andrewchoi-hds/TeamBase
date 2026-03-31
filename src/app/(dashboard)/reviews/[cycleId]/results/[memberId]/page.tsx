@@ -18,7 +18,8 @@ import { ExportButton } from "@/components/common/export-button";
 import { GradeBadge } from "@/components/review/grade-badge";
 import { GoalCard } from "@/components/development-goal/goal-card";
 import { CreateGoalDialog } from "@/components/development-goal/create-goal-dialog";
-import { Target } from "lucide-react";
+import { Target, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { ResponseDisplay } from "@/components/review/response-display";
 import type { AggregatedReport } from "@/lib/utils/review-aggregation";
 
@@ -59,6 +60,13 @@ export default function MemberReviewResultPage({ params }: { params: Promise<{ c
 
   return (
     <div className="space-y-6">
+      <Link
+        href={`/reviews/${cycleId}/results`}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        결과 목록으로
+      </Link>
       <PageHeader
         title={`${report.targetName} 360도 리뷰 리포트`}
         description={`총 ${report.totalReviews}건의 평가`}

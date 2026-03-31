@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck, Trophy, AlertTriangle } from "lucide-react";
+import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck, Trophy, AlertTriangle, BookOpen } from "lucide-react";
 import { StatusBadge } from "@/components/common/status-badge";
 import Link from "next/link";
 import { GoalCard } from "@/components/development-goal/goal-card";
@@ -76,6 +76,43 @@ export default function DashboardPage() {
         title={`안녕하세요, ${user?.name ?? ""}님`}
         description="오늘의 성과관리 현황을 확인하세요."
       />
+
+      {/* 퀵 가이드 — 할 일이 없을 때 표시 */}
+      {pendingReviews.length === 0 && (feedbackSessions?.length ?? 0) === 0 && (activeGoals?.length ?? 0) === 0 && (stats?.pendingAssignments ?? 0) === 0 && (
+        <Card className="mb-8 border-primary/20 bg-gradient-to-r from-primary/[0.03] to-transparent">
+          <CardContent className="py-5">
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold mb-1">TeamBase 시작하기</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  현재 진행 중인 작업이 없습니다. 아래 기능들을 활용하여 성과관리를 시작하세요.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { icon: <ClipboardCheck className="h-4 w-4" />, label: "평가", desc: "배정된 평가 확인", href: "/reviews" },
+                    { icon: <MessageSquare className="h-4 w-4" />, label: "피드백", desc: "동료 피드백 주고받기", href: "/feedback" },
+                    { icon: <Target className="h-4 w-4" />, label: "개선 목표", desc: "성장 목표 설정", href: "/feedback?tab=goals" },
+                    { icon: <Sparkles className="h-4 w-4" />, label: "Kudos", desc: "동료 칭찬하기", href: "#kudos" },
+                  ].map((item) => (
+                    <Link key={item.label} href={item.href}
+                      className="flex items-center gap-2 p-2.5 rounded-lg border bg-background hover:bg-accent/50 transition-colors"
+                    >
+                      <span className="text-muted-foreground">{item.icon}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{item.desc}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Personal Stats */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-8">

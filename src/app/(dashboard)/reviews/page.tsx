@@ -152,11 +152,32 @@ export default function ReviewsPage() {
       <PageHeader title="평가" description="배정된 평가를 확인하고 작성하세요." />
 
       {!groupedByCycle.length ? (
-        <EmptyState
-          icon={<ClipboardCheck className="h-12 w-12" />}
-          title="배정된 평가가 없습니다"
-          description="현재 참여할 수 있는 평가 주기가 없습니다."
-        />
+        <div className="py-16 text-center">
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted mx-auto mb-4">
+            <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">배정된 평가가 없습니다</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+            아직 참여할 수 있는 평가 주기가 없습니다.
+            관리자가 평가 주기를 생성하고 배정하면 이 페이지에 표시됩니다.
+          </p>
+          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-muted-foreground">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">1</div>
+              <span>관리자가 평가 생성</span>
+            </div>
+            <span className="text-muted-foreground/50">→</span>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">2</div>
+              <span>나에게 배정</span>
+            </div>
+            <span className="text-muted-foreground/50">→</span>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">3</div>
+              <span>알림 수신 후 작성</span>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           {groupedByCycle.map(({ cycle, assignments: cycleAssignments }) => {
