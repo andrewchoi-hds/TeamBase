@@ -53,7 +53,7 @@ const REVIEW_TYPE_LABELS: Record<string, string> = {
 
 const STEPS = [
   { title: "기본 정보", description: "이름과 설명" },
-  { title: "기간 설정", description: "분기 또는 수동 날짜" },
+  { title: "기간 설정", description: "대상 기간 + 실시 기간" },
   { title: "템플릿", description: "평가 기준 템플릿" },
   { title: "배정 규칙", description: "배정 전략 선택" },
   { title: "미리보기", description: "대상자 선택 + 확인" },
@@ -179,10 +179,17 @@ export default function NewReviewCyclePage() {
 
   const handleQuarterSelect = (quarter: { key: string; label: string; startDate: Date; endDate: Date }) => {
     setSelectedQuarter(quarter.key);
-    setStartDate(quarter.startDate);
-    setEndDate(quarter.endDate);
-    setValue("startDate", format(quarter.startDate, "yyyy-MM-dd"));
-    setValue("endDate", format(quarter.endDate, "yyyy-MM-dd"));
+
+    // 평가 실시 기간: 분기 종료 다음 날 ~ +14일
+    const evalStart = new Date(quarter.endDate);
+    evalStart.setDate(evalStart.getDate() + 1);
+    const evalEnd = new Date(evalStart);
+    evalEnd.setDate(evalEnd.getDate() + 13);
+
+    setStartDate(evalStart);
+    setEndDate(evalEnd);
+    setValue("startDate", format(evalStart, "yyyy-MM-dd"));
+    setValue("endDate", format(evalEnd, "yyyy-MM-dd"));
 
     const year = quarter.startDate.getFullYear();
     const autoName = `${year}년 ${quarter.label} 평가`;
@@ -323,24 +330,37 @@ export default function NewReviewCyclePage() {
 
         {/* Step 2: 기간 설정 */}
         {currentStep === 1 && (
-          <section className="space-y-4">
-            <div className="p-4 rounded-lg border border-border bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground mb-3">분기를 선택하면 이름과 기간이 자동 설정됩니다</p>
-              <QuarterPicker
-                selectedQuarter={selectedQuarter}
-                onSelect={handleQuarterSelect}
-              />
+          <section className="space-y-5">
+            {/* 1단계: 평가 대상 기간 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-foreground text-background text-[11px] font-bold">1</span>
+                <Label className="text-sm font-semibold">평가 대상 기간</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3 ml-7">어떤 기간의 성과를 평가할지 선택하세요.</p>
+              <div className="ml-7 p-4 rounded-lg border border-border bg-muted/30">
+                <QuarterPicker
+                  selectedQuarter={selectedQuarter}
+                  onSelect={handleQuarterSelect}
+                />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
-              <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                <strong>평가 실시 기간</strong>을 설정합니다. 이 기간 동안 평가자가 평가를 작성하고 제출할 수 있습니다.
-                시작일에 평가가 열리고, 종료일에 마감됩니다.
+
+            {/* 2단계: 평가 실시 기간 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-foreground text-background text-[11px] font-bold">2</span>
+                <Label className="text-sm font-semibold">평가 실시 기간</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3 ml-7">
+                이 기간 동안 평가자가 평가를 작성하고 제출할 수 있습니다.
+                {selectedQuarter && " 분기 종료 후 2주로 자동 설정되었습니다."}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 ml-7">
               <div className="space-y-2">
                 <Label htmlFor="cycle-start-date" className="text-sm font-medium">
-                  평가 시작일 <span className="text-destructive">*</span>
+                  시작일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-start-date"
@@ -355,7 +375,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cycle-end-date" className="text-sm font-medium">
-                  평가 마감일 <span className="text-destructive">*</span>
+                  마감일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-end-date"
@@ -370,16 +390,23 @@ export default function NewReviewCyclePage() {
               </div>
             </div>
             {startDate && endDate && (
-              <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-muted/50 border border-border">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground">
-                  {format(startDate, "yyyy.M.d")} — {format(endDate, "yyyy.M.d")}
-                  {periodLabel && (
-                    <span className="ml-2 font-medium text-foreground">
-                      ({periodLabel})
+              <div className="ml-7 py-2.5 px-3 rounded-md bg-muted/50 border border-border space-y-1">
+                {selectedQuarter && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs">
+                      <span className="text-muted-foreground">대상 기간:</span>
+                      <span className="ml-1 font-medium">{periodLabel}</span>
                     </span>
-                  )}
-                </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs">
+                    <span className="text-muted-foreground">실시 기간:</span>
+                    <span className="ml-1 font-medium">{format(startDate, "yyyy.M.d")} — {format(endDate, "yyyy.M.d")}</span>
+                  </span>
+                </div>
               </div>
             )}
           </section>
