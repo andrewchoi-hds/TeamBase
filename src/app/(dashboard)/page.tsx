@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck, Trophy } from "lucide-react";
+import { ClipboardCheck, MessageSquare, Target, ArrowRight, Sparkles, PenLine, ShieldCheck, Trophy, AlertTriangle } from "lucide-react";
 import { StatusBadge } from "@/components/common/status-badge";
 import Link from "next/link";
 import { GoalCard } from "@/components/development-goal/goal-card";
@@ -52,6 +52,13 @@ export default function DashboardPage() {
     queryKey: ["my-feedback-sessions"],
     queryFn: () => api.get<any[]>("/feedback-sessions/my-sessions"),
     enabled: isReady,
+  });
+
+  const isManagerOrAdmin = user?.role === "ADMIN" || user?.role === "MANAGER";
+  const { data: teamStats } = useQuery({
+    queryKey: ["dashboard-team"],
+    queryFn: () => api.get<any>("/dashboard/team"),
+    enabled: isReady && isManagerOrAdmin,
   });
 
   if (!isReady || statsLoading) return <LoadingState rows={4} variant="cards" />;
@@ -97,6 +104,32 @@ export default function DashboardPage() {
           icon={<Sparkles className="h-5 w-5" />}
         />
       </div>
+
+      {/* 지연 평가 현황 (관리자/매니저) */}
+      {isManagerOrAdmin && (teamStats?.overdueCount ?? 0) > 0 && (
+        <div className="mb-8">
+          <Card className="border-destructive/30 bg-destructive/[0.02]">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-destructive/10">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">지연된 평가</p>
+                    <p className="text-xs text-muted-foreground">
+                      마감 기한이 지난 미제출 평가가 <strong>{teamStats.overdueCount}건</strong> 있습니다.
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/reviews">확인하기</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* 내가 해야 할 평가 */}
       {pendingReviews.length > 0 && (

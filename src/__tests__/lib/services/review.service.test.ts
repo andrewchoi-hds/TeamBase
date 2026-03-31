@@ -5,7 +5,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     reviewCycle: { create: vi.fn(), update: vi.fn() },
     reviewAssignment: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn() },
-    review: { update: vi.fn(), findMany: vi.fn() },
+    review: { update: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
     reviewResponse: { findMany: vi.fn() },
     user: { findMany: vi.fn() },
   },
@@ -76,6 +76,10 @@ describe("ReviewService", () => {
 
   describe("submitReview", () => {
     it("평가를 제출하고 대상자에게 알림을 보낸다", async () => {
+      // 마감일 검증 모킹 (ACTIVE, 미래 마감일)
+      vi.mocked(prisma.review.findUnique).mockResolvedValue({
+        cycle: { status: "ACTIVE", endDate: new Date(Date.now() + 86400000) },
+      } as any);
       vi.mocked(prisma.reviewResponse.findMany).mockResolvedValue([
         { rating: 4, criterion: { category: { id: "cat-1", weight: 1.0 } } },
         { rating: 5, criterion: { category: { id: "cat-1", weight: 1.0 } } },
@@ -106,6 +110,9 @@ describe("ReviewService", () => {
     });
 
     it("RATING 응답이 없으면 overallRating을 null로 설정한다", async () => {
+      vi.mocked(prisma.review.findUnique).mockResolvedValue({
+        cycle: { status: "ACTIVE", endDate: new Date(Date.now() + 86400000) },
+      } as any);
       vi.mocked(prisma.reviewResponse.findMany).mockResolvedValue([
         { rating: null },
       ] as any);

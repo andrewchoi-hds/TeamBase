@@ -7,6 +7,7 @@ import { StatCard } from "@/components/common/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Building2, ClipboardCheck, Shield } from "lucide-react";
 import Link from "next/link";
+import { TeamAnalytics } from "@/components/dashboard/team-analytics";
 
 export default function AdminDashboardPage() {
   const { data: users } = useQuery({
@@ -35,6 +36,12 @@ export default function AdminDashboardPage() {
         <StatCard title="부서 수" value={departments?.length ?? 0} icon={<Building2 className="h-5 w-5" />} />
         <StatCard title="진행중 평가" value={activeCycles} icon={<ClipboardCheck className="h-5 w-5" />} />
         <StatCard title="시스템 상태" value="정상" icon={<Shield className="h-5 w-5" />} />
+      </div>
+
+      {/* 팀 분석 */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">팀 분석</h2>
+        <TeamAnalytics />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

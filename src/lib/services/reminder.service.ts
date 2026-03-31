@@ -46,17 +46,74 @@ export const reminderService = {
   },
 
   /**
-   * 평가 마감 임박 알림 (endDate 3일/1일 전, ACTIVE 사이클)
+   * 관리자에게 팀원 미제출 현황 알림
+   * 마감 7일 전부터 관리자에게 "팀원 N명이 평가를 완료하지 않았습니다" 알림 발송
    */
-  async sendReviewDeadlineReminders() {
+  async sendManagerReminders() {
     const now = new Date();
-    const threeDaysLater = new Date(now);
-    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
 
     const activeCycles = await prisma.reviewCycle.findMany({
       where: {
         status: "ACTIVE",
-        endDate: { gte: now, lte: threeDaysLater },
+        endDate: { lte: sevenDaysLater },
+      },
+      include: {
+        assignments: {
+          where: { status: { not: "SUBMITTED" } },
+          select: {
+            reviewer: { select: { id: true, name: true, managerId: true } },
+          },
+        },
+      },
+    });
+
+    let count = 0;
+    for (const cycle of activeCycles) {
+      // managerId별로 미제출 팀원 그룹화
+      const managerMap = new Map<string, string[]>();
+      for (const a of cycle.assignments) {
+        const managerId = a.reviewer.managerId;
+        if (!managerId) continue;
+        if (!managerMap.has(managerId)) managerMap.set(managerId, []);
+        const names = managerMap.get(managerId)!;
+        if (!names.includes(a.reviewer.name)) names.push(a.reviewer.name);
+      }
+
+      for (const [managerId, memberNames] of managerMap) {
+        const exists = await notificationService.existsToday(
+          managerId,
+          "REVIEW_CYCLE_ENDING",
+          `/reviews/${cycle.id}`
+        );
+        if (exists) continue;
+
+        await notificationService.create({
+          userId: managerId,
+          type: "REVIEW_CYCLE_ENDING",
+          title: "팀원 평가 미완료 알림",
+          message: `"${cycle.name}" — 팀원 ${memberNames.length}명(${memberNames.slice(0, 3).join(", ")}${memberNames.length > 3 ? " 외" : ""})이 아직 평가를 완료하지 않았습니다.`,
+          link: `/reviews/${cycle.id}`,
+        });
+        count++;
+      }
+    }
+    return count;
+  },
+
+  /**
+   * 평가 마감 임박 알림 (endDate 7일 전부터, ACTIVE 사이클)
+   */
+  async sendReviewDeadlineReminders() {
+    const now = new Date();
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+    const activeCycles = await prisma.reviewCycle.findMany({
+      where: {
+        status: "ACTIVE",
+        endDate: { gte: now, lte: sevenDaysLater },
       },
       include: {
         assignments: {

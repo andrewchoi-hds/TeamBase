@@ -42,6 +42,39 @@ async function handlePATCH(req: NextRequest, { params }: { params: { id: string 
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return forbidden();
 
   const data = await req.json();
+
+  // 강제 종료: status가 COMPLETED이고 cancelIncomplete가 true면 미제출 배정 취소
+  if (data.status === "COMPLETED" && data.cancelIncomplete) {
+    const existing = await prisma.reviewCycle.findUnique({
+      where: { id: params.id },
+      select: { status: true },
+    });
+    if (existing?.status === "ACTIVE") {
+      await prisma.$transaction(async (tx) => {
+        await tx.reviewCycle.update({
+          where: { id: params.id },
+          data: { status: "COMPLETED" },
+        });
+        await tx.reviewAssignment.updateMany({
+          where: { cycleId: params.id, status: { in: ["PENDING", "IN_PROGRESS"] } },
+          data: { status: "CANCELLED" },
+        });
+      });
+
+      await auditLogService.log({
+        action: "STATUS_CHANGE",
+        entityType: "REVIEW_CYCLE",
+        entityId: params.id,
+        userId: user.id,
+        changes: data,
+        metadata: { forceCompleted: true, cancelIncomplete: true },
+      });
+
+      const updated = await prisma.reviewCycle.findUnique({ where: { id: params.id } });
+      return NextResponse.json(updated);
+    }
+  }
+
   const cycle = await prisma.reviewCycle.update({
     where: { id: params.id },
     data: {

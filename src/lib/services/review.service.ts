@@ -120,6 +120,19 @@ export const reviewService = {
   },
 
   async submitReview(reviewId: string, userId?: string) {
+    // 마감일 검증: 사이클이 ACTIVE이고 마감 전인지 확인
+    const reviewForCheck = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { cycle: { select: { status: true, endDate: true } } },
+    });
+    if (!reviewForCheck) throw new Error("평가를 찾을 수 없습니다.");
+    if (reviewForCheck.cycle.status !== "ACTIVE") {
+      throw new Error("이 평가 주기는 종료되었습니다. 더 이상 제출할 수 없습니다.");
+    }
+    if (new Date() > new Date(reviewForCheck.cycle.endDate)) {
+      throw new Error("평가 마감 기한이 지났습니다. 관리자에게 기한 연장을 요청하세요.");
+    }
+
     // RATING 유형 응답에 카테고리 가중치를 반영하여 overallRating 계산
     const responses = await prisma.reviewResponse.findMany({
       where: { reviewId },
@@ -189,6 +202,39 @@ export const reviewService = {
     });
 
     return review;
+  },
+
+  async forceCompleteCycle(cycleId: string, cancelIncomplete: boolean, userId: string) {
+    const cycle = await prisma.reviewCycle.findUnique({
+      where: { id: cycleId },
+      select: { id: true, name: true, status: true },
+    });
+    if (!cycle) throw new Error("평가 주기를 찾을 수 없습니다.");
+    if (cycle.status !== "ACTIVE") throw new Error("활성 상태의 평가 주기만 종료할 수 있습니다.");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.reviewCycle.update({
+        where: { id: cycleId },
+        data: { status: "COMPLETED" },
+      });
+      if (cancelIncomplete) {
+        await tx.reviewAssignment.updateMany({
+          where: { cycleId, status: { in: ["PENDING", "IN_PROGRESS"] } },
+          data: { status: "CANCELLED" },
+        });
+      }
+    });
+
+    await auditLogService.log({
+      action: "STATUS_CHANGE",
+      entityType: "REVIEW_CYCLE",
+      entityId: cycleId,
+      userId,
+      changes: { status: "COMPLETED", cancelIncomplete },
+      metadata: { cycleName: cycle.name, forceCompleted: true },
+    });
+
+    return cycle;
   },
 
   async reopenAssignment(assignmentId: string, userId: string, reason?: string) {

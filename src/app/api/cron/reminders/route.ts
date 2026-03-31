@@ -15,16 +15,18 @@ export async function GET(req: NextRequest) {
     // autoClose를 먼저 실행 (종료된 사이클에 overdue 알림이 가지 않도록)
     const autoClose = await reminderService.autoCloseExpiredCycles();
 
-    const [deadline, overdue] = await Promise.all([
+    const [deadline, overdue, managerReminders] = await Promise.all([
       reminderService.sendReviewDeadlineReminders(),
       reminderService.sendOverdueReviewReminders(),
+      reminderService.sendManagerReminders(),
     ]);
 
     const result = {
       autoClose,
       reviewDeadline: deadline,
       reviewOverdue: overdue,
-      total: autoClose + deadline + overdue,
+      managerReminders,
+      total: autoClose + deadline + overdue + managerReminders,
     };
 
     logger.info("리마인더 cron 실행 완료", result);

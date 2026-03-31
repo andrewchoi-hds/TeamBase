@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Save, Send } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Save, Send, AlertTriangle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DevelopmentContextPanel } from "@/components/review/development-context-panel";
 import { GuidelinePanel } from "@/components/review/guideline-panel";
@@ -185,6 +186,14 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
 
   const categories = cycle.template?.categories ?? [];
 
+  // 마감일 계산
+  const now = new Date();
+  const endDate = new Date(cycle.endDate);
+  const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const isPastDeadline = daysLeft < 0;
+  const isDeadlineToday = daysLeft === 0;
+  const isDeadlineSoon = daysLeft > 0 && daysLeft <= 3;
+
   return (
     <div>
       <PageHeader
@@ -193,6 +202,31 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
       />
 
       <div className="max-w-3xl space-y-6">
+        {/* 마감 경고 */}
+        {isPastDeadline && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              평가 마감 기한이 지났습니다. 제출이 불가합니다. 관리자에게 기한 연장을 요청하세요.
+            </AlertDescription>
+          </Alert>
+        )}
+        {isDeadlineToday && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              오늘이 평가 마감일입니다. 작성을 완료하고 제출해주세요.
+            </AlertDescription>
+          </Alert>
+        )}
+        {isDeadlineSoon && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              평가 마감까지 <strong>{daysLeft}일</strong> 남았습니다.
+            </AlertDescription>
+          </Alert>
+        )}
         {cycle.template?.guideline && (
           <GuidelinePanel guideline={cycle.template.guideline} />
         )}
@@ -290,9 +324,9 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             임시 저장
           </Button>
-          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
+          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending || isPastDeadline}>
             {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            제출
+            {isPastDeadline ? "마감 초과" : "제출"}
           </Button>
           <Button variant="ghost" onClick={() => router.back()}>취소</Button>
         </div>

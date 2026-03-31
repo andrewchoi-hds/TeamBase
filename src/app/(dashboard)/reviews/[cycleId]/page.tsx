@@ -17,7 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Play, BarChart3, Loader2, Plus } from "lucide-react";
+import { Play, BarChart3, Loader2, Plus, CalendarPlus, StopCircle } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DatePicker } from "@/components/common/date-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CycleStatusDashboard } from "@/components/review/cycle-status-dashboard";
 import { AssignmentList } from "@/components/review/assignment-list";
@@ -32,6 +35,10 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
   const [newReviewerId, setNewReviewerId] = useState("");
   const [newTargetId, setNewTargetId] = useState("");
   const [newReviewType, setNewReviewType] = useState("PEER");
+  const [showForceComplete, setShowForceComplete] = useState(false);
+  const [cancelIncomplete] = useState(true);
+  const [extendDate, setExtendDate] = useState<Date | undefined>();
+  const [extendOpen, setExtendOpen] = useState(false);
 
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
@@ -42,6 +49,32 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
     queryKey: ["users"],
     queryFn: () => api.get<any[]>("/users"),
     enabled: showAddForm,
+  });
+
+  const extendDeadlineMutation = useMutation({
+    mutationFn: (newEndDate: Date) =>
+      api.patch(`/review-cycles/${cycleId}`, { endDate: newEndDate.toISOString() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
+      toast.success("마감 기한이 연장되었습니다.");
+      setExtendOpen(false);
+      setExtendDate(undefined);
+    },
+    onError: () => toast.error("기한 연장에 실패했습니다."),
+  });
+
+  const forceCompleteMutation = useMutation({
+    mutationFn: () =>
+      api.patch(`/review-cycles/${cycleId}`, {
+        status: "COMPLETED",
+        cancelIncomplete,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
+      toast.success("평가 주기가 종료되었습니다.");
+      setShowForceComplete(false);
+    },
+    onError: () => toast.error("평가 종료에 실패했습니다."),
   });
 
   const activateMutation = useMutation({
@@ -107,6 +140,40 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
               {activateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               평가 시작
             </Button>
+          )}
+          {cycle.status === "ACTIVE" && (
+            <>
+              <Popover open={extendOpen} onOpenChange={setExtendOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    기한 연장
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="end">
+                  <p className="text-sm font-medium mb-2">새 마감일 선택</p>
+                  <DatePicker
+                    value={extendDate}
+                    onChange={setExtendDate}
+                    fromDate={new Date()}
+                    placeholder="마감일 선택"
+                  />
+                  <Button
+                    size="sm"
+                    className="mt-2 w-full"
+                    disabled={!extendDate || extendDeadlineMutation.isPending}
+                    onClick={() => extendDate && extendDeadlineMutation.mutate(extendDate)}
+                  >
+                    {extendDeadlineMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                    연장 적용
+                  </Button>
+                </PopoverContent>
+              </Popover>
+              <Button variant="destructive" size="sm" onClick={() => setShowForceComplete(true)}>
+                <StopCircle className="mr-2 h-4 w-4" />
+                평가 종료
+              </Button>
+            </>
           )}
           {(cycle.status === "ACTIVE" || cycle.status === "COMPLETED") && (
             <Button asChild variant="outline">
@@ -259,6 +326,19 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
           </TabsContent>
         </Tabs>
       </RoleGate>
+
+      {/* 강제 종료 다이얼로그 */}
+      {showForceComplete && (
+        <ConfirmDialog
+          open={showForceComplete}
+          onOpenChange={setShowForceComplete}
+          title="평가 주기를 종료하시겠습니까?"
+          description={`종료된 평가 주기에서는 더 이상 평가를 제출할 수 없습니다.${cancelIncomplete ? " 미제출 평가는 취소 처리됩니다." : " 미제출 평가는 그대로 유지됩니다."}`}
+          confirmText="평가 종료"
+          variant="destructive"
+          onConfirm={() => forceCompleteMutation.mutate()}
+        />
+      )}
     </div>
   );
 }
