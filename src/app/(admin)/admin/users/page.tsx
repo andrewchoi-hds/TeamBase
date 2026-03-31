@@ -48,21 +48,33 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("MEMBER");
+  const [position, setPosition] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [managerId, setManagerId] = useState("");
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: () => api.get<any[]>("/users"),
   });
 
+  const { data: departments } = useQuery({
+    queryKey: ["departments"],
+    queryFn: () => api.get<any[]>("/departments"),
+  });
+
   const mutation = useMutation({
-    mutationFn: () => api.post("/users", { name, email, password, role }),
+    mutationFn: () => api.post("/users", {
+      name, email, password, role,
+      position: position || undefined,
+      departmentId: departmentId || undefined,
+      managerId: managerId || undefined,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("사용자가 추가되었습니다.");
       setOpen(false);
-      setName("");
-      setEmail("");
-      setPassword("");
+      setName(""); setEmail(""); setPassword(""); setPosition("");
+      setDepartmentId(""); setManagerId("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -80,16 +92,48 @@ export default function AdminUsersPage() {
               <div className="space-y-2"><Label>이름</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div className="space-y-2"><Label>이메일</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
               <div className="space-y-2"><Label>비밀번호</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-              <div className="space-y-2">
-                <Label>역할</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MEMBER">팀원</SelectItem>
-                    <SelectItem value="MANAGER">팀장</SelectItem>
-                    <SelectItem value="ADMIN">관리자</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>역할</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEMBER">팀원</SelectItem>
+                      <SelectItem value="MANAGER">팀장</SelectItem>
+                      <SelectItem value="ADMIN">관리자</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>직책 <span className="text-muted-foreground text-xs">(선택)</span></Label>
+                  <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="예: 선임 개발자" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>부서 <span className="text-muted-foreground text-xs">(선택)</span></Label>
+                  <Select value={departmentId || "none"} onValueChange={(v) => setDepartmentId(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="미배치" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">미배치</SelectItem>
+                      {departments?.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>직속 리더 <span className="text-muted-foreground text-xs">(선택)</span></Label>
+                  <Select value={managerId || "none"} onValueChange={(v) => setManagerId(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="없음" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">없음</SelectItem>
+                      {users?.filter((u: any) => u.role === "MANAGER" || u.role === "ADMIN").map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !email || mutation.isPending}>
                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}추가

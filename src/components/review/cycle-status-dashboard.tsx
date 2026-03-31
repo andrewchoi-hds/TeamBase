@@ -1,19 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { LoadingState } from "@/components/common/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, AlertCircle, Ban } from "lucide-react";
-
-const reviewTypeLabels: Record<string, string> = {
-  SELF: "자기평가",
-  PEER: "동료평가",
-  UPWARD: "상향평가",
-  DOWNWARD: "하향평가",
-};
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { toast } from "sonner";
+import { CheckCircle2, Clock, AlertCircle, Ban, Bell, Loader2 } from "lucide-react";
+import { reviewTypeLabels } from "@/lib/constants/review";
 
 interface StatusSummary {
   progress: {
@@ -44,16 +43,40 @@ interface StatusSummary {
 }
 
 export function CycleStatusDashboard({ cycleId }: { cycleId: string }) {
+  const [showReminderConfirm, setShowReminderConfirm] = useState(false);
+  const [filterDepartment, setFilterDepartment] = useState<string>("all");
+  const [filterReviewType, setFilterReviewType] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
   const { data, isLoading } = useQuery({
     queryKey: ["cycle-status-summary", cycleId],
     queryFn: () => api.get<StatusSummary>(`/review-cycles/${cycleId}/status-summary`),
     refetchInterval: 30000,
   });
 
+  const sendReminderMutation = useMutation({
+    mutationFn: () => api.post<{ sent: number }>(`/review-cycles/${cycleId}/send-reminders`, {}),
+    onSuccess: (res) => {
+      toast.success(`${res.sent}명에게 독촉 알림을 발송했습니다.`);
+      setShowReminderConfirm(false);
+    },
+    onError: () => toast.error("독촉 발송에 실패했습니다."),
+  });
+
   if (isLoading) return <LoadingState rows={3} />;
   if (!data) return null;
 
   const { progress, overdue, byDepartment, byReviewType } = data;
+
+  // 미제출 목록 필터링
+  const departments = Array.from(new Set(overdue.map((o) => o.reviewerDepartment))).filter(Boolean);
+  const reviewTypes = Array.from(new Set(overdue.map((o) => o.reviewType)));
+  const filteredOverdue = overdue.filter((item) => {
+    if (filterDepartment !== "all" && item.reviewerDepartment !== filterDepartment) return false;
+    if (filterReviewType !== "all" && item.reviewType !== filterReviewType) return false;
+    if (filterStatus !== "all" && item.status !== filterStatus) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -158,10 +181,55 @@ export function CycleStatusDashboard({ cycleId }: { cycleId: string }) {
       {/* Overdue Table */}
       {overdue.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">미제출자 현황 ({overdue.length}명)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">미제출자 현황 ({filteredOverdue.length}/{overdue.length}명)</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowReminderConfirm(true)}
+              disabled={sendReminderMutation.isPending}
+            >
+              {sendReminderMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Bell className="mr-1 h-3 w-3" />}
+              독촉 발송
+            </Button>
           </CardHeader>
           <CardContent>
+            {/* 필터 */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="부서" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 부서</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterReviewType} onValueChange={setFilterReviewType}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="유형" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 유형</SelectItem>
+                  {reviewTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{reviewTypeLabels[t] ?? t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[120px] h-8 text-xs">
+                  <SelectValue placeholder="상태" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 상태</SelectItem>
+                  <SelectItem value="PENDING">미시작</SelectItem>
+                  <SelectItem value="IN_PROGRESS">진행중</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -174,7 +242,7 @@ export function CycleStatusDashboard({ cycleId }: { cycleId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {overdue.map((item, idx) => (
+                  {filteredOverdue.map((item, idx) => (
                     <tr key={idx} className="border-b last:border-0">
                       <td className="py-2">{item.reviewerName}</td>
                       <td className="py-2 text-muted-foreground">{item.reviewerDepartment}</td>
@@ -197,6 +265,16 @@ export function CycleStatusDashboard({ cycleId }: { cycleId: string }) {
           </CardContent>
         </Card>
       )}
+
+      {/* 독촉 발송 확인 */}
+      <ConfirmDialog
+        open={showReminderConfirm}
+        onOpenChange={setShowReminderConfirm}
+        title="독촉 알림을 발송하시겠습니까?"
+        description={`미제출 평가자 전원에게 독촉 알림(이메일 포함)을 발송합니다.`}
+        confirmText="발송"
+        onConfirm={() => sendReminderMutation.mutate()}
+      />
     </div>
   );
 }

@@ -34,12 +34,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, FileText, MoreVertical, Pencil, Copy, Trash2 } from "lucide-react";
+import { Plus, FileText, MoreVertical, Pencil, Copy, Trash2, Sparkles, ArrowLeft } from "lucide-react";
 import { QUESTION_TYPES } from "@/lib/types/review-template";
+import { TEMPLATE_PRESETS } from "@/lib/constants/template-presets";
 
 export default function ReviewTemplatesPage() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [createStep, setCreateStep] = useState<"select" | "editor">("select");
+  const [selectedPreset, setSelectedPreset] = useState<typeof TEMPLATE_PRESETS[number] | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<any>(null);
@@ -97,20 +100,85 @@ export default function ReviewTemplatesPage() {
   return (
     <div>
       <PageHeader title="평가 템플릿" description="평가 항목 템플릿을 관리합니다.">
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) { setCreateStep("select"); setSelectedPreset(null); }
+        }}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />새 템플릿</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>새 평가 템플릿</DialogTitle>
-            </DialogHeader>
-            <TemplateEditor
-              onSubmit={(data) => createMutation.mutate(data)}
-              isSubmitting={createMutation.isPending}
-              submitLabel="생성"
-            />
-
+          <DialogContent className={createStep === "select" ? "max-w-3xl max-h-[85vh] overflow-y-auto" : "max-w-2xl max-h-[80vh] overflow-y-auto"}>
+            {createStep === "select" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    템플릿 선택
+                  </DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground -mt-2">
+                  프리셋으로 빠르게 시작하거나, 빈 템플릿에서 직접 구성할 수 있습니다.
+                </p>
+                <div className="grid gap-3 md:grid-cols-2 mt-2">
+                  {TEMPLATE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      className="text-left p-4 rounded-lg border hover:border-primary hover:bg-primary/[0.03] transition-colors group"
+                      onClick={() => { setSelectedPreset(preset); setCreateStep("editor"); }}
+                    >
+                      <div className="flex items-start justify-between mb-1.5">
+                        <span className="text-sm font-semibold group-hover:text-primary transition-colors">{preset.name}</span>
+                        <div className="flex gap-1">
+                          {preset.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{preset.description}</p>
+                      <div className="mt-2 flex gap-1 flex-wrap">
+                        {preset.categories.map((cat) => (
+                          <span key={cat.name} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {cat.name} ({cat.criteria.length})
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                  {/* 빈 템플릿 */}
+                  <button
+                    className="text-left p-4 rounded-lg border border-dashed hover:border-primary hover:bg-primary/[0.03] transition-colors group"
+                    onClick={() => { setSelectedPreset(null); setCreateStep("editor"); }}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                      <span className="text-sm font-semibold group-hover:text-primary transition-colors">빈 템플릿</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      프리셋 없이 카테고리와 문항을 직접 구성합니다.
+                    </p>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 -ml-1" onClick={() => { setCreateStep("select"); setSelectedPreset(null); }}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    {selectedPreset ? selectedPreset.name : "새 평가 템플릿"}
+                  </DialogTitle>
+                </DialogHeader>
+                <TemplateEditor
+                  initialName={selectedPreset?.name ?? ""}
+                  initialGuideline={selectedPreset?.guideline ?? ""}
+                  initialCategories={selectedPreset?.categories}
+                  onSubmit={(data) => createMutation.mutate(data)}
+                  isSubmitting={createMutation.isPending}
+                  submitLabel="생성"
+                />
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </PageHeader>

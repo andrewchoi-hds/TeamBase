@@ -1,24 +1,37 @@
 "use client";
 
 import { use } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
+import { exportCSV } from "@/lib/export/csv";
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { GradeBadge } from "@/components/review/grade-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { AggregatedReport } from "@/lib/utils/review-aggregation";
+import { toast } from "sonner";
 
 export default function ReviewResultsPage({ params }: { params: Promise<{ cycleId: string }> }) {
   const { cycleId } = use(params);
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
     queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: () => api.get<{ headers: string[]; rows: (string | number)[][]; cycleName: string }>(
+      `/review-cycles/${cycleId}/results/export`
+    ),
+    onSuccess: (data) => {
+      exportCSV({ filename: `${data.cycleName}_전체결과`, headers: data.headers, rows: data.rows });
+      toast.success("CSV 파일이 다운로드되었습니다.");
+    },
+    onError: () => toast.error("내보내기에 실패했습니다."),
   });
 
   if (isLoading) return <LoadingState rows={5} />;
@@ -38,28 +51,29 @@ export default function ReviewResultsPage({ params }: { params: Promise<{ cycleI
 
   const targets = Array.from(targetMap.values());
 
-  // 각 대상자의 보고서를 병렬 조회 (등급 표시용)
-  const reportQueries = targets.map((target) => ({
-    id: target.id,
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    ...useQuery({
-      queryKey: ["review-report", cycleId, target.id],
-      queryFn: () => api.get<AggregatedReport>(`/review-cycles/${cycleId}/results/${target.id}/report`),
-      enabled: target.completed > 0,
-    }),
-  }));
-
-  const reportMap = new Map<string, AggregatedReport>();
-  reportQueries.forEach((q) => {
-    if (q.data) reportMap.set(q.id, q.data);
-  });
-
   return (
     <div>
-      <PageHeader title={`${cycle.name} - 결과`} description="평가 대상자별 결과를 확인하세요." />
+      <PageHeader title={`${cycle.name} - 결과`} description="평가 대상자별 결과를 확인하세요.">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportMutation.mutate()}
+          disabled={exportMutation.isPending}
+        >
+          {exportMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+          전체 결과 CSV
+        </Button>
+      </PageHeader>
       <div className="space-y-3">
         {targets.map((target) => {
-          const report = reportMap.get(target.id);
+          // 제출된 리뷰의 overallRating 평균으로 등급 표시
+          const submittedRatings = target.assignments
+            .filter((a: any) => a.status === "SUBMITTED" && a.review?.overallRating != null)
+            .map((a: any) => a.review.overallRating as number);
+          const avgScore = submittedRatings.length > 0
+            ? submittedRatings.reduce((s: number, r: number) => s + r, 0) / submittedRatings.length
+            : 0;
+
           return (
             <Link key={target.id} href={`/reviews/${cycleId}/results/${target.id}`}>
               <Card className="cursor-pointer">
@@ -76,8 +90,8 @@ export default function ReviewResultsPage({ params }: { params: Promise<{ cycleI
                         <p className="text-sm text-muted-foreground">{target.position}</p>
                       </div>
                       <Badge variant="outline" className="text-xs">{target.completed}/{target.total} 완료</Badge>
-                      {report && report.overallAvgScore > 0 && (
-                        <GradeBadge score={report.overallAvgScore} size="sm" />
+                      {avgScore > 0 && (
+                        <GradeBadge score={avgScore} size="sm" />
                       )}
                     </div>
                     <div className="flex items-center gap-4">

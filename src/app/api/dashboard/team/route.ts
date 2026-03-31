@@ -14,12 +14,21 @@ async function handleGET() {
 
   const memberIds = subordinates.map((s: any) => s.id);
 
-  const [totalMembers, pendingReviews, completedReviews, feedbackCount] = await Promise.all([
+  const now = new Date();
+
+  const [totalMembers, pendingReviews, completedReviews, feedbackCount, overdueCount] = await Promise.all([
     memberIds.length,
     prisma.reviewAssignment.count({ where: { targetId: { in: memberIds }, status: "PENDING" } }),
     prisma.reviewAssignment.count({ where: { targetId: { in: memberIds }, status: "SUBMITTED" } }),
     prisma.feedbackSessionResponse.count({
       where: { target: { userId: { in: memberIds } } },
+    }),
+    prisma.reviewAssignment.count({
+      where: {
+        reviewerId: { in: memberIds },
+        status: { in: ["PENDING", "IN_PROGRESS"] },
+        cycle: { status: "ACTIVE", endDate: { lt: now } },
+      },
     }),
   ]);
 
@@ -28,6 +37,7 @@ async function handleGET() {
     pendingReviews,
     completedReviews,
     feedbackCount,
+    overdueCount,
     completionRate: pendingReviews + completedReviews > 0
       ? Math.round((completedReviews / (pendingReviews + completedReviews)) * 100)
       : 0,

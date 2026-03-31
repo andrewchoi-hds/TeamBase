@@ -13,7 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Save, Send } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Save, Send, AlertTriangle, XCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { DevelopmentContextPanel } from "@/components/review/development-context-panel";
 import { GuidelinePanel } from "@/components/review/guideline-panel";
@@ -40,6 +43,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
   const [overallComment, setOverallComment] = useState("");
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [invalidCriteria, setInvalidCriteria] = useState<Set<string>>(new Set());
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
 
   // Load draft
   useEffect(() => {
@@ -117,6 +121,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       saveDraft(assignment.id, { responses, overallComment });
+      setDraftSavedAt(new Date());
     }, 3000);
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -185,14 +190,89 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
 
   const categories = cycle.template?.categories ?? [];
 
+  // 진행률 계산
+  const allCriteria = categories.flatMap((cat: any) => cat.criteria ?? []);
+  const totalCriteria = allCriteria.length;
+  const answeredCriteria = allCriteria.filter((c: any) => {
+    const val = responses[c.id];
+    if (!val) return false;
+    const qt = c.questionType ?? "RATING";
+    if (qt === "RATING") return (val.rating ?? 0) > 0;
+    if (qt === "TEXT") return (val.textValue ?? "").trim().length > 0;
+    if (qt === "SINGLE_CHOICE" || qt === "MULTI_CHOICE") return (val.selectedOptions ?? []).length > 0;
+    return false;
+  }).length;
+  const progressPercent = totalCriteria > 0 ? Math.round((answeredCriteria / totalCriteria) * 100) : 0;
+
+  // 마감일 계산
+  const now = new Date();
+  const endDate = new Date(cycle.endDate);
+  const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const isPastDeadline = daysLeft < 0;
+  const isDeadlineToday = daysLeft === 0;
+  const isDeadlineSoon = daysLeft > 0 && daysLeft <= 3;
+
   return (
     <div>
+      <Link
+        href={`/reviews/${cycleId}`}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        {cycle.name}
+      </Link>
       <PageHeader
         title={`${assignment.target.name} 평가 작성`}
-        description={`${cycle.name} - ${assignment.target.position ?? ""}`}
+        description={assignment.target.position ?? ""}
       />
 
+      {/* 고정 진행률 바 */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 bg-background/95 backdrop-blur border-b mb-4">
+        <div className="max-w-3xl flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium">
+                {answeredCriteria}/{totalCriteria} 항목 완료
+              </span>
+              <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-1.5" />
+          </div>
+          {draftSavedAt && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span>자동 저장됨</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="max-w-3xl space-y-6">
+        {/* 마감 경고 */}
+        {isPastDeadline && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              평가 마감 기한이 지났습니다. 제출이 불가합니다. 관리자에게 기한 연장을 요청하세요.
+            </AlertDescription>
+          </Alert>
+        )}
+        {isDeadlineToday && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              오늘이 평가 마감일입니다. 작성을 완료하고 제출해주세요.
+            </AlertDescription>
+          </Alert>
+        )}
+        {isDeadlineSoon && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              평가 마감까지 <strong>{daysLeft}일</strong> 남았습니다.
+            </AlertDescription>
+          </Alert>
+        )}
         {cycle.template?.guideline && (
           <GuidelinePanel guideline={cycle.template.guideline} />
         )}
@@ -290,9 +370,9 @@ export default function WriteReviewPage({ params }: { params: Promise<{ cycleId:
             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             임시 저장
           </Button>
-          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
+          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending || isPastDeadline}>
             {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            제출
+            {isPastDeadline ? "마감 초과" : "제출"}
           </Button>
           <Button variant="ghost" onClick={() => router.back()}>취소</Button>
         </div>

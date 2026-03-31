@@ -17,36 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Play, BarChart3, Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
+import { Play, BarChart3, Loader2, Plus, CalendarPlus, StopCircle } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DatePicker } from "@/components/common/date-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { CycleStatusDashboard } from "@/components/review/cycle-status-dashboard";
-
-const reviewTypeLabels: Record<string, string> = {
-  SELF: "자기평가",
-  PEER: "동료평가",
-  UPWARD: "상향평가",
-  DOWNWARD: "하향평가",
-};
-
-const strategyLabels: Record<string, string> = {
-  self: "자기평가",
-  peer: "동료 상호평가",
-  downward: "하향평가",
-  upward: "상향평가",
-  department_peer: "부서별 동료평가",
-};
+import { AssignmentList } from "@/components/review/assignment-list";
+import { reviewTypeLabels, strategyLabels } from "@/lib/constants/review";
+import type { Assignment, ReviewCycleDetail } from "@/types";
 
 export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cycleId: string }> }) {
   const { cycleId } = use(params);
@@ -56,16 +35,46 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
   const [newReviewerId, setNewReviewerId] = useState("");
   const [newTargetId, setNewTargetId] = useState("");
   const [newReviewType, setNewReviewType] = useState("PEER");
+  const [showForceComplete, setShowForceComplete] = useState(false);
+  const [cancelIncomplete] = useState(true);
+  const [extendDate, setExtendDate] = useState<Date | undefined>();
+  const [extendOpen, setExtendOpen] = useState(false);
 
   const { data: cycle, isLoading } = useQuery({
     queryKey: ["review-cycle", cycleId],
-    queryFn: () => api.get<any>(`/review-cycles/${cycleId}`),
+    queryFn: () => api.get<ReviewCycleDetail>(`/review-cycles/${cycleId}`),
   });
 
   const { data: users } = useQuery({
     queryKey: ["users"],
     queryFn: () => api.get<any[]>("/users"),
     enabled: showAddForm,
+  });
+
+  const extendDeadlineMutation = useMutation({
+    mutationFn: (newEndDate: Date) =>
+      api.patch(`/review-cycles/${cycleId}`, { endDate: newEndDate.toISOString() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
+      toast.success("마감 기한이 연장되었습니다.");
+      setExtendOpen(false);
+      setExtendDate(undefined);
+    },
+    onError: () => toast.error("기한 연장에 실패했습니다."),
+  });
+
+  const forceCompleteMutation = useMutation({
+    mutationFn: () =>
+      api.patch(`/review-cycles/${cycleId}`, {
+        status: "COMPLETED",
+        cancelIncomplete,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
+      toast.success("평가 주기가 종료되었습니다.");
+      setShowForceComplete(false);
+    },
+    onError: () => toast.error("평가 종료에 실패했습니다."),
   });
 
   const activateMutation = useMutation({
@@ -102,14 +111,12 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
     onError: () => toast.error("배정 삭제에 실패했습니다."),
   });
 
-  const [reopenReason, setReopenReason] = useState("");
   const reopenMutation = useMutation({
     mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason?: string }) =>
       api.post(`/review-cycles/${cycleId}/assignments/${assignmentId}/reopen`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["review-cycle", cycleId] });
       toast.success("평가가 재오픈되었습니다.");
-      setReopenReason("");
     },
     onError: () => toast.error("재오픈에 실패했습니다."),
   });
@@ -117,9 +124,10 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
   if (sessionStatus === "loading" || isLoading) return <LoadingState rows={5} />;
   if (!cycle) return null;
 
-  const myAssignments = cycle.assignments?.filter((a: any) => a.reviewerId === session?.user?.id) ?? [];
-  const totalAssignments = cycle.assignments?.length ?? 0;
-  const completedAssignments = cycle.assignments?.filter((a: any) => a.status === "SUBMITTED").length ?? 0;
+  const allAssignments: Assignment[] = cycle.assignments ?? [];
+  const myAssignments = allAssignments.filter((a) => a.reviewerId === session?.user?.id);
+  const totalAssignments = allAssignments.length;
+  const completedAssignments = allAssignments.filter((a) => a.status === "SUBMITTED").length;
   const progressPercent = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
 
   return (
@@ -132,6 +140,40 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
               {activateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               평가 시작
             </Button>
+          )}
+          {cycle.status === "ACTIVE" && (
+            <>
+              <Popover open={extendOpen} onOpenChange={setExtendOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    기한 연장
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="end">
+                  <p className="text-sm font-medium mb-2">새 마감일 선택</p>
+                  <DatePicker
+                    value={extendDate}
+                    onChange={setExtendDate}
+                    fromDate={new Date()}
+                    placeholder="마감일 선택"
+                  />
+                  <Button
+                    size="sm"
+                    className="mt-2 w-full"
+                    disabled={!extendDate || extendDeadlineMutation.isPending}
+                    onClick={() => extendDate && extendDeadlineMutation.mutate(extendDate)}
+                  >
+                    {extendDeadlineMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                    연장 적용
+                  </Button>
+                </PopoverContent>
+              </Popover>
+              <Button variant="destructive" size="sm" onClick={() => setShowForceComplete(true)}>
+                <StopCircle className="mr-2 h-4 w-4" />
+                평가 종료
+              </Button>
+            </>
           )}
           {(cycle.status === "ACTIVE" || cycle.status === "COMPLETED") && (
             <Button asChild variant="outline">
@@ -155,11 +197,11 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
           <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
             <span>기간: {format(new Date(cycle.startDate), "yyyy.M.d", { locale: ko })} ~ {format(new Date(cycle.endDate), "yyyy.M.d", { locale: ko })}</span>
           </div>
-          {cycle.assignmentRules?.strategies?.length > 0 && (
+          {(cycle.assignmentRules?.strategies?.length ?? 0) > 0 && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t">
               <span className="text-xs text-muted-foreground shrink-0">배정 규칙:</span>
               <div className="flex flex-wrap gap-1.5">
-                {cycle.assignmentRules.strategies.map((s: string) => (
+                {cycle.assignmentRules!.strategies!.map((s: string) => (
                   <Badge key={s} variant="secondary" className="text-xs">
                     {strategyLabels[s] ?? s}
                   </Badge>
@@ -178,7 +220,7 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {myAssignments.map((assignment: any) => (
+              {myAssignments.map((assignment) => (
                 <div key={assignment.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <div>
@@ -271,83 +313,32 @@ export default function ReviewCycleDetailPage({ params }: { params: Promise<{ cy
               </div>
             )}
 
-            <div className="space-y-2">
-              {cycle.assignments?.map((assignment: any) => (
-                <div key={assignment.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/30 transition-colors border-b last:border-0">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">{assignment.reviewer.name}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span>{assignment.target.name}</span>
-                    <Badge variant="outline" className="text-xs">{reviewTypeLabels[assignment.reviewType]}</Badge>
-                    {assignment.review?.overallRating != null && (
-                      <Badge variant="secondary" className="text-xs">
-                        {assignment.review.overallRating.toFixed(1)}점
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {assignment.status === "SUBMITTED" && (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
-                        <Link href={`/reviews/${cycleId}/results/${assignment.target.id}`}>
-                          리포트
-                        </Link>
-                      </Button>
-                    )}
-                    <StatusBadge status={assignment.status} />
-                    {cycle.status === "DRAFT" && assignment.status === "PENDING" && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {cycle.status === "ACTIVE" && assignment.status === "SUBMITTED" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                            <RotateCcw className="h-3 w-3" />
-                            재오픈
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>평가 재오픈</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {assignment.reviewer.name}님의 {assignment.target.name}님에 대한 평가를 재오픈하시겠습니까?
-                              평가자에게 알림이 발송됩니다.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <Input
-                            placeholder="재오픈 사유 (선택)"
-                            value={reopenReason}
-                            onChange={(e) => setReopenReason(e.target.value)}
-                          />
-                          <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setReopenReason("")}>취소</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => reopenMutation.mutate({ assignmentId: assignment.id, reason: reopenReason || undefined })}
-                            >
-                              재오픈
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {(!cycle.assignments || cycle.assignments.length === 0) && (
-                <p className="text-sm text-muted-foreground text-center py-4">배정된 평가가 없습니다.</p>
-              )}
-            </div>
+            <AssignmentList
+              assignments={allAssignments}
+              cycleId={cycleId}
+              cycleStatus={cycle.status}
+              onDelete={(id) => deleteAssignmentMutation.mutate(id)}
+              onReopen={(id, reason) => reopenMutation.mutate({ assignmentId: id, reason })}
+              isDeleting={deleteAssignmentMutation.isPending}
+            />
           </CardContent>
         </Card>
           </TabsContent>
         </Tabs>
       </RoleGate>
+
+      {/* 강제 종료 다이얼로그 */}
+      {showForceComplete && (
+        <ConfirmDialog
+          open={showForceComplete}
+          onOpenChange={setShowForceComplete}
+          title="평가 주기를 종료하시겠습니까?"
+          description={`종료된 평가 주기에서는 더 이상 평가를 제출할 수 없습니다.${cancelIncomplete ? " 미제출 평가는 취소 처리됩니다." : " 미제출 평가는 그대로 유지됩니다."}`}
+          confirmText="평가 종료"
+          variant="destructive"
+          onConfirm={() => forceCompleteMutation.mutate()}
+        />
+      )}
     </div>
   );
 }

@@ -18,8 +18,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DatePicker } from "@/components/common/date-picker";
 import { QuarterPicker, detectQuarter, getQuarterLabel } from "@/components/common/quarter-picker";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, FileCheck, Users } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronDown, Eye, FileCheck, Star, AlignLeft, CircleDot, CheckSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { QuestionRenderer } from "@/components/review/question-renderer";
+import type { ResponseValue } from "@/lib/types/review-template";
 import {
   STRATEGIES,
   PRESETS,
@@ -48,7 +53,7 @@ const REVIEW_TYPE_LABELS: Record<string, string> = {
 
 const STEPS = [
   { title: "기본 정보", description: "이름과 설명" },
-  { title: "기간 설정", description: "분기 또는 수동 날짜" },
+  { title: "기간 설정", description: "대상 기간 + 실시 기간" },
   { title: "템플릿", description: "평가 기준 템플릿" },
   { title: "배정 규칙", description: "배정 전략 선택" },
   { title: "미리보기", description: "대상자 선택 + 확인" },
@@ -65,6 +70,10 @@ export default function NewReviewCyclePage() {
   // Step 4: 배정 규칙
   const [selectedStrategies, setSelectedStrategies] = useState<Set<Strategy>>(new Set());
   const [skipAssignment, setSkipAssignment] = useState(false);
+
+  // Step 3: 문항 체험 모드
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [previewResponses, setPreviewResponses] = useState<Record<string, ResponseValue>>({});
 
   // Step 5: 대상자 선택
   const [targetScope, setTargetScope] = useState<"all" | "manual">("all");
@@ -170,10 +179,17 @@ export default function NewReviewCyclePage() {
 
   const handleQuarterSelect = (quarter: { key: string; label: string; startDate: Date; endDate: Date }) => {
     setSelectedQuarter(quarter.key);
-    setStartDate(quarter.startDate);
-    setEndDate(quarter.endDate);
-    setValue("startDate", format(quarter.startDate, "yyyy-MM-dd"));
-    setValue("endDate", format(quarter.endDate, "yyyy-MM-dd"));
+
+    // 평가 실시 기간: 분기 종료 다음 날 ~ +14일
+    const evalStart = new Date(quarter.endDate);
+    evalStart.setDate(evalStart.getDate() + 1);
+    const evalEnd = new Date(evalStart);
+    evalEnd.setDate(evalEnd.getDate() + 13);
+
+    setStartDate(evalStart);
+    setEndDate(evalEnd);
+    setValue("startDate", format(evalStart, "yyyy-MM-dd"));
+    setValue("endDate", format(evalEnd, "yyyy-MM-dd"));
 
     const year = quarter.startDate.getFullYear();
     const autoName = `${year}년 ${quarter.label} 평가`;
@@ -314,15 +330,34 @@ export default function NewReviewCyclePage() {
 
         {/* Step 2: 기간 설정 */}
         {currentStep === 1 && (
-          <section className="space-y-4">
-            <div className="p-4 rounded-lg border border-border bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground mb-3">분기를 선택하면 이름과 기간이 자동 설정됩니다</p>
-              <QuarterPicker
-                selectedQuarter={selectedQuarter}
-                onSelect={handleQuarterSelect}
-              />
+          <section className="space-y-5">
+            {/* 1단계: 평가 대상 기간 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-foreground text-background text-[11px] font-bold">1</span>
+                <Label className="text-sm font-semibold">평가 대상 기간</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3 ml-7">어떤 기간의 성과를 평가할지 선택하세요.</p>
+              <div className="ml-7 p-4 rounded-lg border border-border bg-muted/30">
+                <QuarterPicker
+                  selectedQuarter={selectedQuarter}
+                  onSelect={handleQuarterSelect}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            {/* 2단계: 평가 실시 기간 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-foreground text-background text-[11px] font-bold">2</span>
+                <Label className="text-sm font-semibold">평가 실시 기간</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3 ml-7">
+                이 기간 동안 평가자가 평가를 작성하고 제출할 수 있습니다.
+                {selectedQuarter && " 분기 종료 후 2주로 자동 설정되었습니다."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 ml-7">
               <div className="space-y-2">
                 <Label htmlFor="cycle-start-date" className="text-sm font-medium">
                   시작일 <span className="text-destructive">*</span>
@@ -340,7 +375,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cycle-end-date" className="text-sm font-medium">
-                  종료일 <span className="text-destructive">*</span>
+                  마감일 <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
                   id="cycle-end-date"
@@ -355,16 +390,23 @@ export default function NewReviewCyclePage() {
               </div>
             </div>
             {startDate && endDate && (
-              <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-muted/50 border border-border">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground">
-                  {format(startDate, "yyyy.M.d")} — {format(endDate, "yyyy.M.d")}
-                  {periodLabel && (
-                    <span className="ml-2 font-medium text-foreground">
-                      ({periodLabel})
+              <div className="ml-7 py-2.5 px-3 rounded-md bg-muted/50 border border-border space-y-1">
+                {selectedQuarter && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs">
+                      <span className="text-muted-foreground">대상 기간:</span>
+                      <span className="ml-1 font-medium">{periodLabel}</span>
                     </span>
-                  )}
-                </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs">
+                    <span className="text-muted-foreground">실시 기간:</span>
+                    <span className="ml-1 font-medium">{format(startDate, "yyyy.M.d")} — {format(endDate, "yyyy.M.d")}</span>
+                  </span>
+                </div>
               </div>
             )}
           </section>
@@ -379,36 +421,132 @@ export default function NewReviewCyclePage() {
                   평가 기준이 사전 정의된 템플릿을 선택하세요. 선택하지 않아도 됩니다.
                 </p>
                 <div className="grid grid-cols-1 gap-2">
-                  {templates.map((t: any) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setValue("templateId", watch("templateId") === t.id ? "" : t.id)}
-                      className={cn(
-                        "flex items-start gap-3 p-4 rounded-lg border text-left transition-all duration-150",
-                        "hover:border-foreground/30",
-                        watch("templateId") === t.id
-                          ? "bg-foreground text-background border-foreground shadow-sm"
-                          : "bg-background border-border"
-                      )}
-                    >
-                      <FileCheck className={cn(
-                        "h-4 w-4 mt-0.5 shrink-0",
-                        watch("templateId") === t.id ? "text-background/70" : "text-muted-foreground"
-                      )} />
-                      <div>
-                        <span className="text-sm font-medium">{t.name}</span>
-                        {t.description && (
-                          <p className={cn(
-                            "text-xs mt-0.5",
-                            watch("templateId") === t.id ? "text-background/70" : "text-muted-foreground"
-                          )}>
-                            {t.description}
-                          </p>
+                  {templates.map((t: any) => {
+                    const isSelected = watch("templateId") === t.id;
+                    const totalCriteria = t.categories?.reduce((sum: number, cat: any) => sum + (cat.criteria?.length ?? 0), 0) ?? 0;
+                    const QUESTION_TYPE_ICON: Record<string, React.ReactNode> = {
+                      RATING: <Star className="h-3 w-3" />,
+                      TEXT: <AlignLeft className="h-3 w-3" />,
+                      SINGLE_CHOICE: <CircleDot className="h-3 w-3" />,
+                      MULTI_CHOICE: <CheckSquare className="h-3 w-3" />,
+                    };
+                    const QUESTION_TYPE_LABEL: Record<string, string> = {
+                      RATING: "평점",
+                      TEXT: "서술형",
+                      SINGLE_CHOICE: "단일 선택",
+                      MULTI_CHOICE: "복수 선택",
+                    };
+
+                    return (
+                      <div key={t.id} className="space-y-0">
+                        <button
+                          type="button"
+                          onClick={() => setValue("templateId", isSelected ? "" : t.id)}
+                          className={cn(
+                            "w-full flex items-start gap-3 p-4 rounded-lg border text-left transition-all duration-150",
+                            "hover:border-foreground/30",
+                            isSelected
+                              ? "bg-foreground text-background border-foreground shadow-sm rounded-b-none"
+                              : "bg-background border-border"
+                          )}
+                        >
+                          <FileCheck className={cn(
+                            "h-4 w-4 mt-0.5 shrink-0",
+                            isSelected ? "text-background/70" : "text-muted-foreground"
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium">{t.name}</span>
+                              <span className={cn(
+                                "text-xs shrink-0",
+                                isSelected ? "text-background/70" : "text-muted-foreground"
+                              )}>
+                                {t.categories?.length ?? 0}개 카테고리 · {totalCriteria}개 문항
+                              </span>
+                            </div>
+                            {t.description && (
+                              <p className={cn(
+                                "text-xs mt-0.5",
+                                isSelected ? "text-background/70" : "text-muted-foreground"
+                              )}>
+                                {t.description}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* 선택된 템플릿 문항 미리보기 */}
+                        {isSelected && t.categories?.length > 0 && (
+                          <div className="border border-t-0 border-foreground rounded-b-lg bg-muted/30 p-3 space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                              <p className="text-xs font-medium text-muted-foreground">문항 미리보기</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1.5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewResponses({});
+                                  setPreviewTemplateId(t.id);
+                                }}
+                              >
+                                <Eye className="h-3 w-3" />
+                                미리 풀어보기
+                              </Button>
+                            </div>
+                            {t.categories.map((cat: any) => (
+                              <Collapsible key={cat.id} defaultOpen>
+                                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-md bg-background border text-left text-sm font-medium hover:bg-accent/50 transition-colors group">
+                                  <div className="flex items-center gap-2">
+                                    <span>{cat.name}</span>
+                                    {cat.weight != null && cat.weight !== 1 && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        가중치 {cat.weight}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">{cat.criteria?.length ?? 0}개 문항</span>
+                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                  </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-1 space-y-0.5 pl-1">
+                                    {cat.criteria?.map((criterion: any, idx: number) => (
+                                      <div
+                                        key={criterion.id}
+                                        className="flex items-start gap-2.5 px-3 py-2 rounded-md text-sm"
+                                      >
+                                        <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0 text-right">{idx + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-muted-foreground">
+                                              {QUESTION_TYPE_ICON[criterion.questionType] ?? null}
+                                            </span>
+                                            <span className="font-medium">{criterion.name}</span>
+                                            {criterion.isRequired && (
+                                              <span className="text-destructive text-xs">*</span>
+                                            )}
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {QUESTION_TYPE_LABEL[criterion.questionType] ?? criterion.questionType}
+                                            </span>
+                                          </div>
+                                          {criterion.description && (
+                                            <p className="text-xs text-muted-foreground mt-0.5">{criterion.description}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (
@@ -419,6 +557,64 @@ export default function NewReviewCyclePage() {
             )}
           </section>
         )}
+
+        {/* 템플릿 문항 체험 모드 Dialog */}
+        {previewTemplateId && (() => {
+          const t = templates?.find((tpl: any) => tpl.id === previewTemplateId);
+          if (!t) return null;
+          return (
+            <Dialog open={!!previewTemplateId} onOpenChange={() => setPreviewTemplateId(null)}>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    {t.name} — 문항 체험
+                  </DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    평가자가 실제로 보게 될 화면입니다. 입력 내용은 저장되지 않습니다.
+                  </p>
+                </DialogHeader>
+                <div className="space-y-6 pt-2">
+                  {t.categories?.map((cat: any) => (
+                    <div key={cat.id}>
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                        <h3 className="text-sm font-semibold">{cat.name}</h3>
+                        {cat.weight != null && cat.weight !== 1 && (
+                          <Badge variant="outline" className="text-[10px]">가중치 {cat.weight}</Badge>
+                        )}
+                      </div>
+                      <div className="space-y-5">
+                        {cat.criteria?.map((criterion: any) => (
+                          <div key={criterion.id} className="space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium">{criterion.name}</span>
+                              {criterion.isRequired && (
+                                <span className="text-destructive text-xs">*</span>
+                              )}
+                            </div>
+                            {criterion.description && (
+                              <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                            )}
+                            <QuestionRenderer
+                              criterionId={criterion.id}
+                              criterionName={criterion.name}
+                              questionType={criterion.questionType}
+                              options={criterion.options}
+                              value={previewResponses[criterion.id] ?? {}}
+                              onChange={(val) =>
+                                setPreviewResponses((prev) => ({ ...prev, [criterion.id]: val }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
 
         {/* Step 4: 배정 규칙 선택 */}
         {currentStep === 3 && (

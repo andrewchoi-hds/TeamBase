@@ -9,6 +9,8 @@ async function main() {
   // ==========================================
   // Clean existing data (order matters for FK)
   // ==========================================
+  await prisma.kudos.deleteMany();
+  await prisma.reviewSummary.deleteMany();
   await prisma.developmentGoalFeedback.deleteMany();
   await prisma.developmentGoal.deleteMany();
   await prisma.feedbackSessionResponse.deleteMany();
@@ -1147,6 +1149,45 @@ async function main() {
   console.log("  │  팀원(마케) mkt1@teambase.com        한마케터   │");
   console.log("  │  팀원(마케) mkt2@teambase.com        윤콘텐츠   │");
   console.log("  │  팀원(디자) design1@teambase.com     송디자인   │");
+  // ==========================================
+  // Kudos 샘플 데이터
+  // ==========================================
+  await prisma.kudos.createMany({
+    data: [
+      {
+        senderId: dev1.id,
+        receiverId: dev2.id,
+        message: "지난주 코드 리뷰 정말 꼼꼼하게 해줘서 고마워요! 덕분에 버그를 미리 잡을 수 있었습니다.",
+        tags: JSON.parse(JSON.stringify(["teamwork", "responsibility"])),
+      },
+      {
+        senderId: manager1.id,
+        receiverId: dev3.id,
+        message: "새로운 UI 컴포넌트 설계가 정말 깔끔했어요. 사용자 경험이 크게 개선되었습니다.",
+        tags: JSON.parse(JSON.stringify(["creativity", "innovation"])),
+      },
+      {
+        senderId: dev3.id,
+        receiverId: dev1.id,
+        message: "프로젝트 일정이 빠듯했는데 야근하면서까지 도와줘서 정말 감사합니다.",
+        tags: JSON.parse(JSON.stringify(["teamwork", "caring"])),
+      },
+      {
+        senderId: mkt1.id,
+        receiverId: designer.id,
+        message: "캠페인 디자인 퀄리티가 뛰어나서 클라이언트가 매우 만족했습니다!",
+        tags: JSON.parse(JSON.stringify(["creativity", "communication"])),
+      },
+      {
+        senderId: dev2.id,
+        receiverId: manager1.id,
+        message: "멘토링 세션에서 알려주신 아키텍처 패턴 덕분에 많이 성장했습니다. 감사합니다!",
+        tags: JSON.parse(JSON.stringify(["leadership", "growth"])),
+      },
+    ],
+  });
+  console.log("✅ Kudos 샘플 생성 완료 (5건)");
+
   console.log("  └────────────────────────────────────────────────┘\n");
   console.log("  데이터 요약:");
   console.log("  - 부서 3개 (개발/마케팅/디자인)");
@@ -1158,6 +1199,7 @@ async function main() {
   console.log("  - 피드백 응답 19건");
   console.log("  - 개선 목표 5건");
   console.log("  - 알림 8건");
+  console.log("  - 동료 칭찬(Kudos) 5건");
   console.log("");
   console.log("  🧪 다중 유형 테스트:");
   console.log("  - '다중 유형 종합 평가' 템플릿: RATING(3) + TEXT(2) + SINGLE_CHOICE(2) + MULTI_CHOICE(2)");

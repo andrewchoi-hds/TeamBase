@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils";
 import type { QuestionType } from "@prisma/client";
 import type { ResponseValue, ChoiceOption, RubricDefinition } from "@/lib/types/review-template";
 
+const DEFAULT_LABELS: Record<number, string> = {
+  1: "매우 부족",
+  2: "부족",
+  3: "보통",
+  4: "우수",
+  5: "탁월",
+};
+
 function RatingScale({
   value,
   onChange,
@@ -29,17 +37,31 @@ function RatingScale({
 }) {
   const hasRubric = rubric && Object.values(rubric).some((v) => v);
 
+  // 선택한 점수의 설명 텍스트
+  const getDescription = (n: number) => {
+    if (hasRubric && rubric[String(n) as keyof RubricDefinition]) {
+      return rubric[String(n) as keyof RubricDefinition];
+    }
+    return DEFAULT_LABELS[n] ?? "";
+  };
+
   return (
     <div className="space-y-2">
+      {/* 점수 라벨 가이드 */}
+      <div className="flex justify-between text-[10px] text-muted-foreground px-0.5" style={{ width: `${5 * 2.25 + 0.25 * 4}rem` }}>
+        <span>{DEFAULT_LABELS[1]}</span>
+        <span>{DEFAULT_LABELS[5]}</span>
+      </div>
       <div className="flex gap-1" role="radiogroup" aria-label={label || "평가 점수"}>
         {[1, 2, 3, 4, 5].map((n) => {
+          const desc = getDescription(n);
           const btn = (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={n === value}
-              aria-label={`${n}점${hasRubric ? `: ${rubric[String(n) as keyof RubricDefinition]}` : ""}`}
+              aria-label={`${n}점: ${desc}`}
               onClick={() => onChange(n)}
               className={cn(
                 "h-9 w-9 rounded-md border flex items-center justify-center text-sm font-medium transition-colors",
@@ -53,25 +75,29 @@ function RatingScale({
             </button>
           );
 
-          if (hasRubric && rubric[String(n) as keyof RubricDefinition]) {
-            return (
-              <TooltipProvider key={n} delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs">
-                    <p className="text-xs">{n}점: {rubric[String(n) as keyof RubricDefinition]}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-          return btn;
+          return (
+            <TooltipProvider key={n} delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs font-medium">{n}점 — {DEFAULT_LABELS[n]}</p>
+                  {hasRubric && rubric[String(n) as keyof RubricDefinition] && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{rubric[String(n) as keyof RubricDefinition]}</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
         })}
       </div>
-      {hasRubric && value > 0 && rubric[String(value) as keyof RubricDefinition] && (
-        <p className="text-xs text-muted-foreground pl-1">
-          {value}점: {rubric[String(value) as keyof RubricDefinition]}
-        </p>
+      {/* 선택한 점수의 설명 표시 */}
+      {value > 0 && (
+        <div className="text-xs pl-1 py-1.5 px-2.5 rounded-md bg-muted/60">
+          <span className="font-medium text-foreground">{value}점 — {DEFAULT_LABELS[value]}</span>
+          {hasRubric && rubric[String(value) as keyof RubricDefinition] && (
+            <p className="text-muted-foreground mt-0.5">{rubric[String(value) as keyof RubricDefinition]}</p>
+          )}
+        </div>
       )}
     </div>
   );
